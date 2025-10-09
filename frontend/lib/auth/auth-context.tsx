@@ -32,7 +32,7 @@ const monadTestnet = {
 }
 
 export type UserType = 'issuer' | 'holder' | 'verifier' | null
-export type AuthMethod = 'metamask' | 'passkey' | 'email' | null
+export type AuthMethod = 'metamask' | 'passkey' | null
 
 interface AuthState {
   isAuthenticated: boolean
@@ -46,7 +46,6 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   connectMetaMask: (userType: UserType) => Promise<void>
   connectPasskey: (userType: UserType) => Promise<void>
-  connectEmail: (email: string, userType: UserType) => Promise<void>
   disconnect: () => void
 }
 
@@ -64,18 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load persisted session on mount
   useEffect(() => {
-    const loadSession = () => {
-      const session = localStorage.getItem('vericred_session')
-      if (session) {
-        try {
-          const data = JSON.parse(session)
-          setState(prev => ({ ...prev, ...data, isLoading: false }))
-        } catch (e) {
-          console.error('Failed to load session:', e)
-        }
+    const session = localStorage.getItem('vericred_session')
+    if (session) {
+      try {
+        const data = JSON.parse(session)
+        setState(prev => ({ ...prev, ...data, isLoading: false }))
+      } catch (e) {
+        console.error('Failed to load session:', e)
       }
     }
-    loadSession()
   }, [])
 
   // Persist session whenever state changes
@@ -214,9 +210,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signer: { webAuthnAccount, keyId: credentialIdHex },
       })
 
-      // Store credential ID for future authentications
-      localStorage.setItem('vericred_passkey_credential_id', credential.id)
-
       setState({
         isAuthenticated: true,
         walletAddress: smartAccount.address,
@@ -232,39 +225,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const connectEmail = async (email: string, userType: UserType) => {
-    setState(prev => ({ ...prev, isLoading: true }))
-
-    try {
-      // In production, this would:
-      // 1. Send magic link to email
-      // 2. User clicks link
-      // 3. Create embedded wallet via Turnkey or similar
-      // 4. Create smart account from embedded wallet
-
-      // For MVP, simulate this with a mock wallet
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      // Generate mock address for demonstration
-      const mockAddress = `0x${Array.from(crypto.getRandomValues(new Uint8Array(20)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('')}` as Address
-
-      setState({
-        isAuthenticated: true,
-        walletAddress: mockAddress,
-        userType,
-        authMethod: 'email',
-        smartAccountAddress: null, // Would be created after email verification
-        isLoading: false,
-      })
-    } catch (error: any) {
-      console.error('Email authentication failed:', error)
-      setState(prev => ({ ...prev, isLoading: false }))
-      throw error
-    }
-  }
-
   const disconnect = () => {
     setState({
       isAuthenticated: false,
@@ -275,7 +235,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: false,
     })
     localStorage.removeItem('vericred_session')
-    localStorage.removeItem('vericred_passkey_credential_id')
   }
 
   return (
@@ -284,7 +243,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...state,
         connectMetaMask,
         connectPasskey,
-        connectEmail,
         disconnect,
       }}
     >

@@ -1,205 +1,177 @@
 "use client";
 
+import { Suspense, useRef } from "react";
 import { motion } from "framer-motion";
-import { Clock, FileX, DollarSign, CheckCircle, Zap, Shield } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, Sphere, MeshDistortMaterial } from "@react-three/drei";
+import { Shield, Zap, Fingerprint } from "lucide-react";
+import * as THREE from "three";
+
+// Animated 3D sphere
+function AnimatedSphere() {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.x = state.clock.getElapsedTime() * 0.15;
+      meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.2;
+    }
+  });
+
+  return (
+    <Sphere args={[1, 100, 200]} scale={1.5} ref={meshRef}>
+      <MeshDistortMaterial
+        color="#10b981"
+        attach="material"
+        distort={0.3}
+        speed={1.5}
+        roughness={0.1}
+        metalness={0.9}
+      />
+    </Sphere>
+  );
+}
 
 export function ProblemSolution() {
-  const problems = [
-    {
-      icon: Clock,
-      title: "Manual, Slow Verification",
-      description: "Traditional verification takes weeks, involves manual processes, and creates bottlenecks for institutions and employers.",
-      impact: "Lost opportunities"
-    },
-    {
-      icon: FileX,
-      title: "Credential Fraud & Forgery",
-      description: "Fake diplomas and certificates cost employers billions annually. Current systems can't detect sophisticated forgeries.",
-      impact: "Multi-billion losses"
-    },
-    {
-      icon: DollarSign,
-      title: "Complex Web3 Onboarding",
-      description: "Most credential systems require technical knowledge of crypto wallets, making adoption impossible for mainstream users.",
-      impact: "User friction"
-    }
-  ];
-
-  const solutions = [
-    {
-      icon: Zap,
-      title: "AI-Powered Fraud Detection",
-      description: "Advanced AI analyzes on-chain history and transaction patterns to detect fraud before credential issuance.",
-      benefit: "99.9% accuracy"
-    },
+  const features = [
     {
       icon: Shield,
-      title: "Seamless Smart Accounts",
-      description: "Users sign in with Google while leveraging MetaMask Smart Accounts for security without complexity.",
-      benefit: "Web2 UX + Web3 security"
+      title: "AI Fraud Detection",
+      metric: "99.9%",
+      description: "AI analyzes on-chain patterns to prevent credential fraud before issuance",
     },
     {
-      icon: CheckCircle,
+      icon: Zap,
       title: "Instant Verification",
-      description: "Verify credentials in under 2 seconds using Envio's high-performance indexing on Monad blockchain.",
-      benefit: "&lt;2s verification"
-    }
+      metric: "<2s",
+      description: "Monad's 400ms blocks + Envio indexing for real-time credential verification",
+    },
+    {
+      icon: Fingerprint,
+      title: "Passkey Authentication",
+      metric: "Face ID",
+      description: "Biometric sign-in with smart accounts—no wallet complexity needed",
+    },
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-black text-foreground mb-6">
-            Credential Fraud is a <span className="text-accent">Multi-Billion Dollar Problem</span>
-          </h2>
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed">
-            Traditional verification is slow, manual, and susceptible to forgery. Web3 onboarding is too complex for non-technical users.
-          </p>
-        </motion.div>
+    <section className="relative bg-black py-24 overflow-hidden">
+      {/* Subtle background glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/5 rounded-full blur-3xl" />
+      </div>
 
-        {/* Problems Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="mb-20"
-        >
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-black text-foreground mb-4">Why You're Frustrated</h3>
-            <p className="text-lg text-muted-foreground">
-              These are the real problems you face every time you job hunt
-            </p>
-          </div>
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          {/* Left: 3D Visual */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative"
+          >
+            <div className="relative h-[500px]">
+              <Canvas camera={{ position: [0, 0, 4], fov: 50 }}>
+                <Suspense fallback={null}>
+                  <ambientLight intensity={0.4} />
+                  <directionalLight position={[5, 5, 5]} intensity={1.2} />
+                  <pointLight position={[-5, -5, -5]} intensity={0.5} color="#10b981" />
+                  <AnimatedSphere />
+                  <OrbitControls
+                    enableZoom={false}
+                    enablePan={false}
+                    autoRotate
+                    autoRotateSpeed={0.5}
+                    minPolarAngle={Math.PI / 3}
+                    maxPolarAngle={Math.PI / 1.5}
+                  />
+                </Suspense>
+              </Canvas>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {problems.map((problem, index) => (
+              {/* Floating stats around sphere */}
               <motion.div
-                key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="absolute top-20 right-0 px-4 py-2 bg-slate-950/80 backdrop-blur-xl border border-emerald-500/30 rounded-xl"
               >
-                <Card className="h-full hover:shadow-xl transition-all duration-300 border-destructive/20">
-                  <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <problem.icon className="w-8 h-8 text-destructive" />
-                    </div>
-                    <div className="text-lg font-bold text-destructive mb-3">{problem.impact}</div>
-                    <h4 className="text-xl font-black text-foreground mb-4">{problem.title}</h4>
-                    <p className="text-muted-foreground leading-relaxed">{problem.description}</p>
-                  </CardContent>
-                </Card>
+                <div className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                  $16B
+                </div>
+                <div className="text-xs text-slate-400">Fraud prevented</div>
               </motion.div>
-            ))}
-          </div>
-        </motion.div>
 
-        {/* Arrow Transition */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="flex justify-center mb-20"
-        >
-          <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center shadow-xl">
-            <svg
-              className="w-10 h-10 text-primary-foreground"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M19 14l-7 7m0 0l-7-7m7 7V3"
-              />
-            </svg>
-          </div>
-        </motion.div>
-
-        {/* Solutions Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-        >
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-black text-foreground mb-4">How VeriCred+ Fixes This</h3>
-            <p className="text-lg text-muted-foreground">
-              Finally, a credential system that works for you, not against you
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {solutions.map((solution, index) => (
               <motion.div
-                key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+                className="absolute bottom-32 left-0 px-4 py-2 bg-slate-950/80 backdrop-blur-xl border border-emerald-500/30 rounded-xl"
               >
-                <Card className="h-full hover:shadow-xl transition-all duration-300 border-chart-4/20 bg-chart-4/5">
-                  <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-chart-4/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <solution.icon className="w-8 h-8 text-chart-4" />
-                    </div>
-                    <div className="text-lg font-bold text-chart-4 mb-3">{solution.benefit}</div>
-                    <h4 className="text-xl font-black text-foreground mb-4">{solution.title}</h4>
-                    <p className="text-muted-foreground leading-relaxed">{solution.description}</p>
-                  </CardContent>
-                </Card>
+                <div className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                  &lt;2s
+                </div>
+                <div className="text-xs text-slate-400">Verification</div>
               </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Bottom CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-center mt-20"
-        >
-          <div className="bg-primary/10 border-2 border-primary/20 rounded-3xl p-12 max-w-3xl mx-auto">
-            <h4 className="text-3xl font-black text-foreground mb-6">
-              Ready to Never Wait for Verification Again?
-            </h4>
-            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Join thousands of professionals who've taken control of their credentials. 
-              Get verified instantly, share freely, and never miss another opportunity.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-3 h-3 bg-chart-4 rounded-full"></div>
-                <span className="font-semibold">Free to use</span>
-              </div>
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                <span className="font-semibold">Works everywhere</span>
-              </div>
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-3 h-3 bg-accent rounded-full"></div>
-                <span className="font-semibold">Setup in 2 minutes</span>
-              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+
+          {/* Right: Content */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="inline-block px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+              <span className="text-emerald-400 font-semibold text-sm tracking-wide">Why VeriCred+</span>
+            </div>
+
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-[1.1]">
+              Tamper-Proof Credentials.<br />
+              <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                AI-Powered Trust.
+              </span>
+            </h2>
+
+            <p className="text-lg text-slate-400 mb-12 leading-relaxed">
+              Traditional verification takes weeks and costs billions in fraud. VeriCred+ uses AI, MetaMask smart accounts,
+              and Monad blockchain to verify credentials instantly—with zero complexity.
+            </p>
+
+            {/* Features list */}
+            <div className="space-y-6">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="flex gap-4 group"
+                >
+                  <div className="flex-shrink-0 w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                    <feature.icon className="w-6 h-6 text-emerald-400" />
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-bold text-white">{feature.title}</h3>
+                      <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 rounded text-xs font-bold text-emerald-400">
+                        {feature.metric}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400 leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

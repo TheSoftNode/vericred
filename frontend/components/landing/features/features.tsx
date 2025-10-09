@@ -1,209 +1,216 @@
 "use client";
 
+import { Suspense, useRef } from "react";
 import { motion } from "framer-motion";
-import { Brain, Users, Shield, Zap, Clock, Key } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Torus, MeshDistortMaterial } from "@react-three/drei";
+import { Brain, Shield, Zap, Lock, Globe, ArrowRight } from "lucide-react";
+import * as THREE from "three";
+
+// Animated 3D torus
+function AnimatedTorus() {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.x = state.clock.getElapsedTime() * 0.2;
+      meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.3;
+    }
+  });
+
+  return (
+    <Torus args={[1, 0.4, 64, 100]} ref={meshRef}>
+      <MeshDistortMaterial
+        color="#10b981"
+        attach="material"
+        distort={0.3}
+        speed={1.5}
+        roughness={0.2}
+        metalness={0.8}
+      />
+    </Torus>
+  );
+}
 
 export function Features() {
-  const mainFeatures = [
+  const features = [
     {
       icon: Brain,
-      title: "AI-Powered Fraud Detection",
-      description: "Advanced AI agents analyze on-chain history and transaction patterns to detect potential fraud before credential issuance.",
-      benefits: ["99.9% accuracy", "Real-time analysis", "Pattern recognition"],
-      color: "accent"
-    },
-    {
-      icon: Users,
-      title: "Delegated Smart Account Management",
-      description: "Seamlessly delegate credential issuance permissions using MetaMask Smart Accounts with time-bounded controls.",
-      benefits: ["Permission delegation", "Time-bounded access", "Smart account security"],
-      color: "primary"
+      title: "AI Fraud Detection",
+      description: "Advanced AI analyzes on-chain patterns in real-time to prevent credential fraud before issuance",
+      stat: "99.9%",
+      label: "Accuracy",
+      color: "emerald",
     },
     {
       icon: Shield,
-      title: "Soulbound NFT Credentials",
-      description: "Issue tamper-proof credentials as Soulbound NFTs that cannot be transferred, ensuring authenticity and ownership.",
-      benefits: ["Non-transferable", "Immutable records", "Blockchain verified"],
-      color: "chart-3"
-    }
-  ];
-
-  const additionalFeatures = [
+      title: "Soulbound NFTs",
+      description: "Tamper-proof credentials as non-transferable NFTs with immutable blockchain verification",
+      stat: "100%",
+      label: "Secure",
+      color: "cyan",
+    },
     {
       icon: Zap,
       title: "Instant Verification",
-      description: "Verify credentials in under 2 seconds using Envio's high-performance indexing.",
-      stat: "<2s"
+      description: "Monad's 400ms blocks + Envio indexing for sub-2-second credential verification",
+      stat: "<2s",
+      label: "Speed",
+      color: "emerald",
     },
     {
-      icon: Clock,
-      title: "Time-Bounded Access",
-      description: "Grant temporary verification access with automatic expiration for enhanced security.",
-      stat: "Automated"
+      icon: Lock,
+      title: "Smart Account Delegation",
+      description: "MetaMask smart accounts with time-bounded delegation for secure issuance permissions",
+      stat: "Time-boxed",
+      label: "Control",
+      color: "cyan",
     },
     {
-      icon: Key,
-      title: "Frictionless Onboarding",
-      description: "Sign in with familiar Web2 methods while leveraging Web3 security under the hood.",
-      stat: "15s Setup"
-    }
-  ];
-
-  const flowSteps = [
-    {
-      step: "01",
-      title: "Issue Request",
-      description: "Issuer enters recipient details and credential information"
+      icon: Globe,
+      title: "Interoperable",
+      description: "Standards-compliant credentials that work across platforms and ecosystems seamlessly",
+      stat: "Universal",
+      label: "Access",
+      color: "emerald",
     },
-    {
-      step: "02",
-      title: "AI Analysis",
-      description: "AI agent queries Envio indexer and analyzes on-chain history"
-    },
-    {
-      step: "03",
-      title: "Risk Assessment",
-      description: "OpenAI GPT-4o generates comprehensive fraud risk report"
-    },
-    {
-      step: "04",
-      title: "Delegation",
-      description: "MetaMask delegation request for secure credential minting"
-    },
-    {
-      step: "05",
-      title: "Blockchain Mint",
-      description: "Soulbound NFT credential minted on Monad blockchain"
-    }
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <Badge variant="outline" className="mb-4">
-            Core Features
-          </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Next-Generation <span className="text-primary">Credential Technology</span>
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Powered by cutting-edge AI, blockchain technology, and seamless user experience design
-          </p>
-        </motion.div>
+    <section className="relative bg-black py-32 overflow-hidden">
+      {/* Background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl" />
+      </div>
 
-        {/* Main Features */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-20">
-          {mainFeatures.map((feature, index) => (
+      {/* Grid pattern overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8">
+        {/* Header with 3D element */}
+        <div className="grid lg:grid-cols-2 gap-16 items-center mb-24">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="inline-block px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+              <span className="text-emerald-400 font-semibold text-sm tracking-wide">Powerful Features</span>
+            </div>
+
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 leading-[1.1]">
+              Built for the<br />
+              <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                Future of Trust
+              </span>
+            </h2>
+
+            <p className="text-lg text-slate-400 leading-relaxed mb-8">
+              Combining AI, blockchain, and smart accounts to create the most advanced credential verification platform.
+            </p>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-sm text-slate-400">Powered by Monad</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+                <span className="text-sm text-slate-400">Indexed by Envio</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* 3D Torus */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative h-[400px]"
+          >
+            <Canvas camera={{ position: [0, 0, 4], fov: 50 }}>
+              <Suspense fallback={null}>
+                <ambientLight intensity={0.5} />
+                <directionalLight position={[5, 5, 5]} intensity={1} />
+                <pointLight position={[-5, -5, 5]} intensity={0.5} color="#10b981" />
+                <AnimatedTorus />
+              </Suspense>
+            </Canvas>
+          </motion.div>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((feature, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: index * 0.2 }}
-            >
-              <Card className="h-full hover:shadow-xl transition-all duration-300 group">
-                <CardContent className="p-8">
-                  <div className={`w-16 h-16 bg-${feature.color}/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <feature.icon className={`w-8 h-8 text-${feature.color}`} />
-                  </div>
-                  <h3 className="text-2xl font-bold text-foreground mb-4">{feature.title}</h3>
-                  <p className="text-muted-foreground mb-6 leading-relaxed">
-                    {feature.description}
-                  </p>
-                  <div className="space-y-2">
-                    {feature.benefits.map((benefit, idx) => (
-                      <div key={idx} className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 bg-${feature.color} rounded-full`}></div>
-                        <span className="text-sm text-muted-foreground">{benefit}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Process Flow */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="mb-20"
-        >
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-foreground mb-4">How It Works</h3>
-            <p className="text-lg text-muted-foreground">
-              Our streamlined process ensures security, efficiency, and user experience
-            </p>
-          </div>
-
-          <div className="relative">
-            <div className="flex flex-col lg:flex-row items-center justify-between space-y-8 lg:space-y-0 lg:space-x-4">
-              {flowSteps.map((step, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  className="relative flex-1 max-w-xs"
-                >
-                  <Card className="text-center hover:shadow-lg transition-shadow duration-300">
-                    <CardContent className="p-6">
-                      <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 text-primary-foreground font-bold">
-                        {step.step}
-                      </div>
-                      <h4 className="text-lg font-semibold text-foreground mb-2">{step.title}</h4>
-                      <p className="text-sm text-muted-foreground">{step.description}</p>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* Arrow */}
-                  {index < flowSteps.length - 1 && (
-                    <div className="hidden lg:block absolute top-1/2 -right-6 transform -translate-y-1/2">
-                      <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Additional Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {additionalFeatures.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
+              whileHover={{ y: -8 }}
+              className="group relative"
             >
-              <Card className="text-center hover:shadow-lg transition-shadow duration-300">
-                <CardContent className="p-6">
-                  <div className="w-14 h-14 bg-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <feature.icon className="w-7 h-7 text-primary" />
+              {/* Glow effect */}
+              <div className={`absolute inset-0 ${
+                feature.color === 'cyan'
+                  ? 'bg-cyan-500/10'
+                  : 'bg-emerald-500/10'
+              } rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+
+              {/* Card */}
+              <div className={`relative h-full bg-slate-950/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 ${
+                feature.color === 'cyan'
+                  ? 'hover:border-cyan-500/30'
+                  : 'hover:border-emerald-500/30'
+              } transition-all duration-300`}>
+                {/* Icon */}
+                <div className="mb-6">
+                  <div className={`w-14 h-14 ${
+                    feature.color === 'cyan'
+                      ? 'bg-cyan-500/10 border-cyan-500/20 group-hover:bg-cyan-500/20'
+                      : 'bg-emerald-500/10 border-emerald-500/20 group-hover:bg-emerald-500/20'
+                  } rounded-xl flex items-center justify-center border transition-colors`}>
+                    <feature.icon className={`w-7 h-7 ${
+                      feature.color === 'cyan' ? 'text-cyan-400' : 'text-emerald-400'
+                    }`} />
                   </div>
-                  <div className="text-2xl font-bold text-primary mb-2">{feature.stat}</div>
-                  <h4 className="text-lg font-semibold text-foreground mb-3">{feature.title}</h4>
-                  <p className="text-muted-foreground text-sm">{feature.description}</p>
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Title */}
+                <h3 className={`text-xl font-bold text-white mb-3 ${
+                  feature.color === 'cyan'
+                    ? 'group-hover:text-cyan-400'
+                    : 'group-hover:text-emerald-400'
+                } transition-colors`}>
+                  {feature.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-sm text-slate-400 leading-relaxed mb-4">
+                  {feature.description}
+                </p>
+
+                {/* Arrow indicator */}
+                <div className={`flex items-center gap-2 ${
+                  feature.color === 'cyan' ? 'text-cyan-400' : 'text-emerald-400'
+                } opacity-0 group-hover:opacity-100 transition-opacity`}>
+                  <span className="text-xs font-semibold">Learn more</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+
+                {/* Corner accent */}
+                <div className="absolute bottom-0 right-0 w-24 h-24 overflow-hidden rounded-br-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className={`absolute bottom-0 right-0 w-full h-full ${
+                    feature.color === 'cyan'
+                      ? 'bg-cyan-500/10'
+                      : 'bg-emerald-500/10'
+                  }`} />
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>

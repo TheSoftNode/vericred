@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Shield, X, Fingerprint, Mail, Loader2 } from "lucide-react";
+import { Shield, X, Fingerprint, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, UserType } from "@/lib/auth/auth-context";
 import { useRouter } from "next/navigation";
@@ -16,9 +15,8 @@ interface SignInModalProps {
 
 export function SignInModal({ isOpen, onClose }: SignInModalProps) {
   const [userType, setUserType] = useState<UserType>(null);
-  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { connectMetaMask, connectPasskey, connectEmail, isLoading } = useAuth();
+  const { connectMetaMask, connectPasskey, isLoading } = useAuth();
   const router = useRouter();
 
   const handlePasskeySignIn = async () => {
@@ -49,20 +47,6 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
     }
   };
 
-  const handleEmailContinue = async () => {
-    if (!userType || !email) return;
-    setError(null);
-
-    try {
-      await connectEmail(email, userType);
-      onClose();
-      // Route to appropriate dashboard
-      router.push(getDashboardRoute(userType));
-    } catch (err: any) {
-      setError(err.message || "Email authentication failed");
-    }
-  };
-
   const getDashboardRoute = (type: UserType): string => {
     switch (type) {
       case 'issuer':
@@ -78,7 +62,6 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
   const resetModal = () => {
     setUserType(null);
-    setEmail("");
     setError(null);
   };
 
@@ -187,53 +170,12 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
                     ← Change user type
                   </button>
 
-                  {/* Email Input (for holders and issuers) */}
-                  {(userType === "holder" || userType === "issuer") && (
-                    <>
-                      <div className="space-y-2">
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                          <Input
-                            type="email"
-                            placeholder="Enter your email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            disabled={isLoading}
-                            className="h-12 bg-slate-800/30 border-slate-700 text-white placeholder:text-slate-500 pl-12 rounded-xl focus:ring-emerald-500"
-                          />
-                        </div>
-                      </div>
-
-                      <Button
-                        onClick={handleEmailContinue}
-                        disabled={!email || isLoading}
-                        className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Mail className="w-4 h-4 mr-2" />
-                        )}
-                        Continue with Email
-                      </Button>
-
-                      <div className="relative my-4">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-slate-700"></div>
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-slate-900 px-2 text-slate-400">OR</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
                   {/* Passkey Sign-In (for holders and issuers) */}
                   {(userType === "holder" || userType === "issuer") && (
                     <Button
                       onClick={handlePasskeySignIn}
                       disabled={isLoading}
-                      className="w-full h-12 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 text-white font-medium rounded-xl transition-all duration-200 disabled:opacity-50"
+                      className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50"
                     >
                       {isLoading ? (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -242,6 +184,18 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
                       )}
                       Sign in with Passkey
                     </Button>
+                  )}
+
+                  {/* MetaMask Connect Divider (only show if passkey is available) */}
+                  {(userType === "holder" || userType === "issuer") && (
+                    <div className="relative my-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-slate-700"></div>
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-slate-900 px-2 text-slate-400">OR</span>
+                      </div>
+                    </div>
                   )}
 
                   {/* MetaMask Connect (all users) */}
