@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: VeriCred_Enterprise_Indexer
+description: Enterprise-grade blockchain indexer for VeriCred+ credential management system
+field_selection:
+  transaction_fields:
+    - "hash"
+    - "gasUsed"
+  block_fields:
+    - "baseFeePerGas"
+networks:
+- id: 10143 # Monad Testnet
+  start_block: 0
+  hypersync_config:
+    url: "${MONAD_HYPERSYNC_URL:-https://testnet-rpc.monad.xyz}"
+  contracts:
+  - name: VeriCredSBT
+    address:
+    - "${VERICRED_SBT_ADDRESS:-0x0000000000000000000000000000000000000001}"
+    handler: src/EventHandlers.ts
+    events:
+    - event: Approval(address indexed owner, address indexed approved, uint256 indexed tokenId)
+    - event: ApprovalForAll(address indexed owner, address indexed operator, bool approved)
+    - event: BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId)
+    - event: ConfigurationUpdated(string parameter, bool value)
+    - event: ContractUpgraded(address indexed newImplementation)
+    - event: CredentialMinted(uint256 indexed tokenId, address indexed recipient, address indexed issuer, string credentialType, string metadataURI)
+    - event: CredentialRevoked(uint256 indexed tokenId, address indexed revoker, string reason)
+    - event: DelegationGranted(address indexed issuer, address indexed delegate, string credentialType, uint256 expirationTime)
+    - event: DelegationRevoked(address indexed issuer, address indexed delegate, string credentialType)
+    - event: ExternalContractUpdated(string contractType, address contractAddress)
+    - event: MetadataUpdate(uint256 _tokenId)
+    - event: Paused(address account)
+    - event: RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+    - event: RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+    - event: RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+    - event: Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
+    - event: Unpaused(address account)
+  - name: CredentialRegistry
+    address:
+    - "${CREDENTIAL_REGISTRY_ADDRESS:-0x0000000000000000000000000000000000000002}"
+    handler: src/EventHandlers.ts
+    events:
+    - event: AttributeSet(uint256 indexed tokenId, bytes32 indexed attributeKey, bytes attributeValue)
+    - event: CredentialRegistered(uint256 indexed tokenId, address indexed issuer, address indexed recipient, string credentialType, bytes32 credentialHash)
+    - event: CredentialStatusChanged(uint256 indexed tokenId, uint8 oldStatus, uint8 newStatus, address changedBy, string reason)
+    - event: CredentialTypeAuthorized(address indexed issuer, string credentialType, bool authorized)
+    - event: IssuerRegistered(address indexed issuer, string name, bool isVerified)
+    - event: IssuerVerificationChanged(address indexed issuer, bool isVerified, address changedBy)
+    - event: Paused(address account)
+    - event: RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+    - event: RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+    - event: RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+    - event: Unpaused(address account)
+unordered_multichain_mode: true
+preload_handlers: true

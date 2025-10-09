@@ -1,0 +1,277 @@
+# Enterprise Aggregation Entities
+type Credential {
+  id: ID!
+  tokenId: BigInt!
+  recipient: String! @index
+  issuer: String! @index
+  credentialType: String! @index
+  metadataURI: String!
+  credentialHash: String
+  status: CredentialStatus!
+  issuedAt: Timestamp!
+  revokedAt: Timestamp
+  revokedBy: String
+  revocationReason: String
+  blockNumber: BigInt!
+  transactionHash: String!
+  
+  # Relationships
+  mintEvent: VeriCredSBT_CredentialMinted!
+  registryEvent: CredentialRegistry_CredentialRegistered
+  revokeEvent: VeriCredSBT_CredentialRevoked
+  transfers: [VeriCredSBT_Transfer!]! @derivedFrom(field: "credential")
+  attributes: [CredentialRegistry_AttributeSet!]! @derivedFrom(field: "credential")
+}
+
+type Issuer {
+  id: ID! # issuer address
+  name: String!
+  isVerified: Boolean! @index
+  registeredAt: Timestamp!
+  logoURI: String
+  websiteURI: String
+  totalCredentialsIssued: BigInt!
+  totalActiveCredentials: BigInt!
+  authorizedTypes: [String!]!
+  
+  # Relationships
+  credentials: [Credential!]! @derivedFrom(field: "issuer")
+  delegations: [VeriCredSBT_DelegationGranted!]! @derivedFrom(field: "issuer")
+}
+
+type CredentialType {
+  id: ID! # credential type string
+  name: String!
+  totalIssued: BigInt!
+  totalActive: BigInt!
+  authorizedIssuers: [String!]!
+  
+  # Relationships
+  credentials: [Credential!]! @derivedFrom(field: "credentialType")
+}
+
+enum CredentialStatus {
+  ACTIVE
+  REVOKED
+  TRANSFERRED
+}
+
+# Enhanced Event Entities with Common Fields
+type CredentialRegistry_AttributeSet {
+  id: ID!
+  tokenId: BigInt!
+  attributeKey: String!
+  attributeValue: String!
+  blockNumber: BigInt!
+  blockTimestamp: Timestamp!
+  transactionHash: String!
+  logIndex: Int!
+  
+  # Relationships
+  credential: Credential
+}
+
+type CredentialRegistry_CredentialRegistered {
+  id: ID!
+  tokenId: BigInt!
+  issuer: String! @index
+  recipient: String! @index
+  credentialType: String! @index
+  credentialHash: String!
+  blockNumber: BigInt!
+  blockTimestamp: Timestamp!
+  transactionHash: String!
+  logIndex: Int!
+  
+  # Relationships
+  credential: Credential
+}
+
+type CredentialRegistry_CredentialStatusChanged {
+  id: ID!
+  tokenId: BigInt!
+  oldStatus: BigInt!
+  newStatus: BigInt!
+  changedBy: String!
+  reason: String!
+}
+
+type CredentialRegistry_CredentialTypeAuthorized {
+  id: ID!
+  issuer: String!
+  credentialType: String!
+  authorized: Boolean!
+}
+
+type CredentialRegistry_IssuerRegistered {
+  id: ID!
+  issuer: String!
+  name: String!
+  isVerified: Boolean!
+}
+
+type CredentialRegistry_IssuerVerificationChanged {
+  id: ID!
+  issuer: String!
+  isVerified: Boolean!
+  changedBy: String!
+}
+
+type CredentialRegistry_Paused {
+  id: ID!
+  account: String!
+}
+
+type CredentialRegistry_RoleAdminChanged {
+  id: ID!
+  role: String!
+  previousAdminRole: String!
+  newAdminRole: String!
+}
+
+type CredentialRegistry_RoleGranted {
+  id: ID!
+  role: String!
+  account: String!
+  sender: String!
+}
+
+type CredentialRegistry_RoleRevoked {
+  id: ID!
+  role: String!
+  account: String!
+  sender: String!
+}
+
+type CredentialRegistry_Unpaused {
+  id: ID!
+  account: String!
+}
+
+type VeriCredSBT_Approval {
+  id: ID!
+  owner: String!
+  approved: String!
+  tokenId: BigInt!
+}
+
+type VeriCredSBT_ApprovalForAll {
+  id: ID!
+  owner: String!
+  operator: String!
+  approved: Boolean!
+}
+
+type VeriCredSBT_BatchMetadataUpdate {
+  id: ID!
+  _fromTokenId: BigInt!
+  _toTokenId: BigInt!
+}
+
+type VeriCredSBT_ConfigurationUpdated {
+  id: ID!
+  parameter: String!
+  value: Boolean!
+}
+
+type VeriCredSBT_ContractUpgraded {
+  id: ID!
+  newImplementation: String!
+}
+
+type VeriCredSBT_CredentialMinted {
+  id: ID!
+  tokenId: BigInt!
+  recipient: String! @index
+  issuer: String! @index
+  credentialType: String! @index
+  metadataURI: String!
+  blockNumber: BigInt!
+  blockTimestamp: Timestamp!
+  transactionHash: String!
+  logIndex: Int!
+  gasUsed: BigInt
+  gasPrice: BigInt
+  
+  # Relationships
+  credential: Credential
+}
+
+type VeriCredSBT_CredentialRevoked {
+  id: ID!
+  tokenId: BigInt!
+  revoker: String!
+  reason: String!
+}
+
+type VeriCredSBT_DelegationGranted {
+  id: ID!
+  issuer: String!
+  delegate: String!
+  credentialType: String!
+  expirationTime: BigInt!
+}
+
+type VeriCredSBT_DelegationRevoked {
+  id: ID!
+  issuer: String!
+  delegate: String!
+  credentialType: String!
+}
+
+type VeriCredSBT_ExternalContractUpdated {
+  id: ID!
+  contractType: String!
+  contractAddress: String!
+}
+
+type VeriCredSBT_MetadataUpdate {
+  id: ID!
+  _tokenId: BigInt!
+}
+
+type VeriCredSBT_Paused {
+  id: ID!
+  account: String!
+}
+
+type VeriCredSBT_RoleAdminChanged {
+  id: ID!
+  role: String!
+  previousAdminRole: String!
+  newAdminRole: String!
+}
+
+type VeriCredSBT_RoleGranted {
+  id: ID!
+  role: String!
+  account: String!
+  sender: String!
+}
+
+type VeriCredSBT_RoleRevoked {
+  id: ID!
+  role: String!
+  account: String!
+  sender: String!
+}
+
+type VeriCredSBT_Transfer {
+  id: ID!
+  from: String! @index
+  to: String! @index
+  tokenId: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: Timestamp!
+  transactionHash: String!
+  logIndex: Int!
+  
+  # Relationships
+  credential: Credential
+}
+
+type VeriCredSBT_Unpaused {
+  id: ID!
+  account: String!
+}
+
