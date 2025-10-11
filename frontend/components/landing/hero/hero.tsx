@@ -19,10 +19,10 @@ export function Hero() {
 
         {/* Main Content Grid */}
         <div className="relative z-10 min-h-screen">
-          <div className="mx-auto max-w-7xl flex px-6 lg:px-8 h-screen">
-            <div className="flex justify-between gap-12 lg:gap-64 h-full py-20">
+          <div className="mx-auto max-w-7xl flex px-4 sm:px-6 lg:px-8 h-screen">
+            <div className="flex justify-between gap-12 lg:gap-64 h-full py-16 sm:py-20">
               {/* Left Side - Content */}
-              <div className="flex items-center">
+              <div className="flex items-center w-full lg:w-auto">
                 <HeroContent onGetStarted={() => setShowSignInModal(true)} />
               </div>
 

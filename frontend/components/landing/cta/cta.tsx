@@ -260,48 +260,126 @@ export function CTA() {
               className="relative h-[400px] flex items-center justify-center"
             >
               <div className="relative w-full h-full flex items-center justify-center">
+                {/* Glow effect behind card */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse" />
+                </div>
+
                 {/* Large Badge Visual */}
-                <div className="relative">
-                  <div className="w-56 h-56 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-3xl border border-white/10 backdrop-blur-xl p-6 flex flex-col items-center justify-center space-y-4">
-                    <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center">
-                      <Sparkles className="w-8 h-8 text-white" />
+                <motion.div
+                  className="relative"
+                  animate={{
+                    rotateY: [0, 5, 0, -5, 0],
+                    rotateX: [0, 2, 0, -2, 0]
+                  }}
+                  transition={{
+                    duration: 8,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  style={{ transformStyle: "preserve-3d" }}
+                >
+                  {/* Main card with shimmer effect */}
+                  <div className="w-72 h-72 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-3xl border border-white/10 backdrop-blur-xl p-8 flex flex-col items-center justify-center space-y-6 relative overflow-hidden shadow-2xl shadow-emerald-500/20">
+                    {/* Shimmer overlay */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                      animate={{ x: [-250, 250] }}
+                      transition={{ duration: 3, repeat: Infinity, repeatDelay: 1 }}
+                    />
+
+                    <motion.div
+                      className="w-20 h-20 bg-emerald-500 rounded-2xl flex items-center justify-center relative z-10 shadow-lg shadow-emerald-500/50"
+                      animate={{
+                        scale: [1, 1.1, 1],
+                        rotate: [0, 5, 0, -5, 0]
+                      }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                    >
+                      <Sparkles className="w-10 h-10 text-white" />
+                    </motion.div>
+
+                    <div className="text-center relative z-10">
+                      <div className="text-3xl font-black text-white mb-2">VeriCred+</div>
+                      <div className="text-sm text-emerald-400 font-bold tracking-wider">CREDENTIAL SYSTEM</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-black text-white mb-1">VeriCred+</div>
-                      <div className="text-xs text-emerald-400 font-bold">CREDENTIAL SYSTEM</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" style={{ animationDelay: "0.5s" }} />
-                      <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: "1s" }} />
+
+                    <div className="flex gap-2 relative z-10">
+                      <motion.div
+                        className="w-2 h-2 bg-emerald-400 rounded-full"
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                      <motion.div
+                        className="w-2 h-2 bg-cyan-400 rounded-full"
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                      />
+                      <motion.div
+                        className="w-2 h-2 bg-emerald-400 rounded-full"
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+                      />
                     </div>
                   </div>
 
-                  {/* Floating badges around */}
+                  {/* Floating badges around - with more dynamic animations */}
                   <motion.div
-                    animate={{ y: [-8, 8, -8] }}
+                    animate={{
+                      y: [-8, 8, -8],
+                      rotate: [-2, 2, -2]
+                    }}
                     transition={{ duration: 3, repeat: Infinity }}
-                    className="absolute -top-4 -right-4 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 rounded-full backdrop-blur-xl"
+                    className="absolute -top-4 -right-4 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 rounded-full backdrop-blur-xl shadow-lg shadow-emerald-500/20"
                   >
                     <span className="text-xs text-emerald-400 font-bold">AI Powered</span>
                   </motion.div>
 
                   <motion.div
-                    animate={{ y: [8, -8, 8] }}
+                    animate={{
+                      y: [8, -8, 8],
+                      rotate: [2, -2, 2]
+                    }}
                     transition={{ duration: 3.5, repeat: Infinity }}
-                    className="absolute -bottom-4 -left-4 px-3 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-full backdrop-blur-xl"
+                    className="absolute -bottom-4 -left-4 px-3 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-full backdrop-blur-xl shadow-lg shadow-cyan-500/20"
                   >
                     <span className="text-xs text-cyan-400 font-bold">Blockchain</span>
                   </motion.div>
 
                   <motion.div
-                    animate={{ x: [-8, 8, -8] }}
+                    animate={{
+                      x: [-8, 8, -8],
+                      rotate: [2, -2, 2]
+                    }}
                     transition={{ duration: 4, repeat: Infinity }}
-                    className="absolute top-1/2 -right-10 px-3 py-1.5 bg-white/10 border border-white/20 rounded-full backdrop-blur-xl"
+                    className="absolute top-1/2 -right-10 px-3 py-1.5 bg-white/10 border border-white/20 rounded-full backdrop-blur-xl shadow-lg"
                   >
                     <span className="text-xs text-white font-bold">Secure</span>
                   </motion.div>
-                </div>
+
+                  {/* Additional floating verification badges */}
+                  <motion.div
+                    animate={{
+                      y: [-6, 6, -6],
+                      x: [-3, 3, -3]
+                    }}
+                    transition={{ duration: 5, repeat: Infinity }}
+                    className="absolute -left-8 top-1/4 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full backdrop-blur-xl"
+                  >
+                    <span className="text-xs text-emerald-400 font-bold">✓ Verified</span>
+                  </motion.div>
+
+                  <motion.div
+                    animate={{
+                      y: [6, -6, 6],
+                      x: [3, -3, 3]
+                    }}
+                    transition={{ duration: 4.5, repeat: Infinity }}
+                    className="absolute -right-6 bottom-1/4 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full backdrop-blur-xl"
+                  >
+                    <span className="text-xs text-cyan-400 font-bold">Instant</span>
+                  </motion.div>
+                </motion.div>
               </div>
             </motion.div>
 

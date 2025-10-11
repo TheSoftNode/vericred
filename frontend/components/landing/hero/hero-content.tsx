@@ -9,7 +9,7 @@ interface HeroContentProps {
 
 export default function HeroContent({ onGetStarted }: HeroContentProps) {
   return (
-    <div className="flex flex-col justify-center h-full space-y-8">
+    <div className="flex flex-col justify-center h-full space-y-6 sm:space-y-8">
       {/* Main Heading */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -17,9 +17,9 @@ export default function HeroContent({ onGetStarted }: HeroContentProps) {
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="space-y-2"
       >
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-[-0.02em]">
-          <span className="block text-white/90 font-light mb-1 whitespace-nowrap">Tamper-Proof Credentials</span>
-          <span className="block text-white font-black whitespace-nowrap">AI-Powered Verification</span>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-[-0.02em]">
+          <span className="block text-white/90 font-light mb-1">Tamper-Proof Credentials</span>
+          <span className="block text-white font-black">AI-Powered Verification</span>
         </h1>
       </motion.div>
 
@@ -28,7 +28,7 @@ export default function HeroContent({ onGetStarted }: HeroContentProps) {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-        className="text-base md:text-lg text-slate-400 max-w-xl leading-relaxed font-normal"
+        className="text-sm sm:text-base md:text-lg text-slate-400 max-w-xl leading-relaxed font-normal"
       >
         Issue verifiable credentials with AI fraud detection.
         Verify instantly on Monad blockchain. Build trust in the Web3 credential economy—securely.

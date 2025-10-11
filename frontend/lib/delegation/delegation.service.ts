@@ -123,7 +123,7 @@ class DelegationService {
     const expiryTimestamp = now + params.expiryDays * 24 * 60 * 60;
 
     // Build caveats using caveat builder
-    const caveatBuilder = createCaveatBuilder(this.environment);
+    const caveatBuilder = createCaveatBuilder(this.smartAccount.environment);
 
     // 1. Only allow VeriCredSBT contract
     caveatBuilder.addCaveat('allowedTargets', {
@@ -132,7 +132,7 @@ class DelegationService {
 
     // 2. Only allow mintCredential function
     caveatBuilder.addCaveat('allowedMethods', {
-      selectors: ['mintCredential(address,string,string,uint256,uint256)'],
+      selectors: ['0x83115c5b'], // keccak256 hash of "mintCredential(address,string,string,uint256,uint256)"
     });
 
     // 3. Limit number of credentials
@@ -148,15 +148,17 @@ class DelegationService {
 
     const caveats = caveatBuilder.build();
 
+    console.log('Caveats built:', caveats);
+
     // Create delegation from user's smart account to backend
     const delegation = createDelegation({
       from: this.smartAccount.address, // User's smart account
       to: params.backendAddress, // VeriCred+ backend
-      environment: this.environment,
+      environment: this.smartAccount.environment,
       scope: {
         type: 'functionCall',
         targets: [params.veriCredSBTAddress],
-        selectors: ['mintCredential(address,string,string,uint256,uint256)'],
+        selectors: ['0x83115c5b'], // Function selector for mintCredential
       },
       caveats,
     });
@@ -176,15 +178,36 @@ class DelegationService {
     }
 
     console.log('Requesting user to sign delegation...');
+    console.log('Delegation to sign:', JSON.stringify(delegation, null, 2));
+    console.log('Smart account address:', this.smartAccount.address);
 
-    // User signs delegation with their smart account
-    const signature = await this.smartAccount.signDelegation({
-      delegation,
-    });
+    try {
+      // User signs delegation with their smart account
+      // This should trigger MetaMask popup for EIP-712 signing
+      console.log('Calling smartAccount.signDelegation...');
 
-    console.log('Delegation signed by user');
+      const signature = await this.smartAccount.signDelegation({
+        delegation,
+      });
 
-    return signature;
+      console.log('✅ Delegation signed successfully!');
+      console.log('Signature:', signature);
+
+      return signature;
+    } catch (error: any) {
+      console.error('❌ Delegation signing failed:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Full error:', error);
+
+      // Check if user rejected
+      if (error.code === 4001 || error.message?.includes('User rejected')) {
+        throw new Error('User rejected the delegation signature request');
+      }
+
+      // Other errors
+      throw new Error(`Failed to sign delegation: ${error.message || 'Unknown error'}`);
+    }
   }
 
   /**
