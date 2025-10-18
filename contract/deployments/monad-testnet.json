@@ -1,0 +1,15 @@
+{
+  "network": "monad-testnet",
+  "chainId": 10143,
+  "deployer": "0xAeF7B1596cD0a4Ec7f0D12E0ba440AdF2c2AE32f",
+  "deploymentDate": "2024-10-18",
+  "contracts": {
+    "CredentialRegistry": "0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE",
+    "VeriCredSBT": "0x875b5b800d86314905C2850520F9ab07b46c0B4c"
+  },
+  "transactions": {
+    "CredentialRegistry": "0x584f5feca326125af92a1ca22ac0164470a3906ef2085227783bd5f29fc4d50f",
+    "VeriCredSBT": "0xe0eb254e9b3a05a5c17450300dd9e97b57e93fd3823950357e244a8b520d3a60"
+  },
+  "status": "DEPLOYED - Configuration pending"
+}

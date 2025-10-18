@@ -13,3 +13,8 @@ optimizer_runs = 200
 eth-rpc-url="https://testnet-rpc.monad.xyz"
 chain_id = 10143
 
+
+fs_permissions = [
+  { access = "read", path = "./deployments" },
+  { access = "write", path = "./deployments" }
+]
