@@ -48,7 +48,7 @@ Created `.env` file in `/contract` directory:
 
 ```bash
 # contract/.env
-PRIVATE_KEY=0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31
+PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
 ```
 
 **Important:** Private key must have `0x` prefix for Foundry to parse correctly.
@@ -93,7 +93,7 @@ fs_permissions = [
 
 ```bash
 cast wallet import monad-deployer \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --unsafe-password ""
 ```
 
@@ -105,7 +105,7 @@ cast wallet import monad-deployer \
 
 **Command:**
 ```bash
-forge create --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+forge create --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy \
   --broadcast \
@@ -151,7 +151,7 @@ forge create --private-key ... \
 
 **Second Attempt (Success):**
 ```bash
-forge create --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+forge create --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy \
   --broadcast \
@@ -194,7 +194,7 @@ After deployment, the contracts needed to be linked together and properly config
 cast send 0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE \
   "addAuthorizedSBTContract(address)" \
   0x875b5b800d86314905C2850520F9ab07b46c0B4c \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -216,7 +216,7 @@ cast send 0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE \
 cast send 0x875b5b800d86314905C2850520F9ab07b46c0B4c \
   "setCredentialRegistry(address)" \
   0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -241,7 +241,7 @@ cast send 0x875b5b800d86314905C2850520F9ab07b46c0B4c \
 cast send 0x875b5b800d86314905C2850520F9ab07b46c0B4c \
   "grantIssuerRole(address)" \
   0xAeF7B1596cD0a4Ec7f0D12E0ba440AdF2c2AE32f \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -272,7 +272,7 @@ cast send 0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE \
   "VeriCred Team" \
   "https://vericred.com" \
   "https://vericred.com/logo.png" \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -296,7 +296,7 @@ cast send 0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE \
   "setIssuerVerification(address,bool)" \
   0xAeF7B1596cD0a4Ec7f0D12E0ba440AdF2c2AE32f \
   true \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -323,7 +323,7 @@ cast send 0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE \
   0xAeF7B1596cD0a4Ec7f0D12E0ba440AdF2c2AE32f \
   "Bachelor_Degree" \
   true \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -346,7 +346,7 @@ cast send 0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE \
   0xAeF7B1596cD0a4Ec7f0D12E0ba440AdF2c2AE32f \
   "Professional_Certificate" \
   true \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -388,7 +388,7 @@ cast send 0x875b5b800d86314905C2850520F9ab07b46c0B4c \
   "grantRole(bytes32,address)" \
   0x1948e62cb88693562db3600e12aba035ba28da4a0626473ef28234bb89054073 \
   0x3B35b29fE41f04Ad32aE174E42a6ed53c6715c75 \
-  --private-key 0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31 \
+  --private-key 0xYOUR_PRIVATE_KEY_HERE \
   --rpc-url https://testnet-rpc.monad.xyz \
   --legacy
 ```
@@ -645,7 +645,7 @@ NEXT_PUBLIC_VERICRED_SBT_ADDRESS=0x875b5b800d86314905C2850520F9ab07b46c0B4c
 NEXT_PUBLIC_CREDENTIAL_REGISTRY_ADDRESS=0xBc0E4fAdcfD447D084C2EC66D5265d7F714eDdCE
 
 # Backend Wallet
-BACKEND_PRIVATE_KEY=0x030286aa1effec7e5690906a278b42780934c361d
+BACKEND_PRIVATE_KEY=0xYOUR_BACKEND_PRIVATE_KEY_HERE
 NEXT_PUBLIC_BACKEND_DELEGATION_ADDRESS=0x3B35b29fE41f04Ad32aE174E42a6ed53c6715c75
 ```
 
@@ -680,7 +680,7 @@ vm.envUint: failed parsing $PRIVATE_KEY as type `uint256`: missing hex prefix ("
 PRIVATE_KEY=7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31
 
 # Correct
-PRIVATE_KEY=0x7a93da41dca0a5d696735a07994b86e98661d394b1a0381c397d1e91df8b2d31
+PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
 ```
 
 ---
