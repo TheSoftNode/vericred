@@ -2,35 +2,35 @@
  * Delegation Storage API
  *
  * POST /api/delegations - Store signed delegation from frontend
- * GET /api/delegations - List delegations for a smart account
+ * GET /api/delegations - List delegations for an issuer
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { withAuth } from '@/lib/auth/middleware';
+import { DelegationModel } from '@/lib/database/models/Delegation';
 
-// In-memory storage for MVP (replace with database in production)
-const delegationsStore = new Map<string, any>();
-
-// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Address, X-Signature, X-Timestamp',
 };
 
 export async function OPTIONS(request: NextRequest) {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function POST(request: NextRequest) {
+async function postDelegationHandler(req: NextRequest) {
   try {
-    const body = await request.json();
-    const { delegation, smartAccountAddress, issuerAddress } = body;
+    const body = await req.json();
+    const { delegation, smartAccountAddress, maxCalls, expiresAt } = body;
+
+    // Get issuer address from authenticated request
+    const issuerAddress = (req as any).address;
 
     // Validate inputs
-    if (!delegation || !smartAccountAddress || !issuerAddress) {
+    if (!delegation || !smartAccountAddress) {
       return NextResponse.json(
-        { error: 'Missing required fields: delegation, smartAccountAddress, issuerAddress' },
+        { error: 'Missing required fields: delegation, smartAccountAddress' },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -42,27 +42,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate delegation ID
-    const delegationId = `del_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Get backend wallet address from environment
+    const backendAddress = process.env.NEXT_PUBLIC_BACKEND_DELEGATION_ADDRESS;
+    if (!backendAddress) {
+      throw new Error('Backend delegation address not configured');
+    }
 
-    // Store delegation
-    const storedDelegation = {
-      id: delegationId,
-      delegation,
+    // Create delegation in database
+    const delegationId = await DelegationModel.createDelegation({
+      issuerAddress,
       smartAccountAddress: smartAccountAddress.toLowerCase(),
-      issuerAddress: issuerAddress.toLowerCase(),
-      createdAt: new Date().toISOString(),
-      status: 'active', // active, used, revoked
-      usageCount: 0,
-      maxUsageCount: 100, // Extract from delegation caveats in production
-    };
-
-    delegationsStore.set(delegationId, storedDelegation);
+      backendAddress: backendAddress.toLowerCase(),
+      delegation,
+      maxCalls: maxCalls || 100,
+      expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+    });
 
     console.log('[Delegation] Stored delegation:', {
       id: delegationId,
       smartAccount: smartAccountAddress,
       issuer: issuerAddress,
+      maxCalls,
     });
 
     return NextResponse.json({
@@ -71,52 +71,61 @@ export async function POST(request: NextRequest) {
       message: 'Delegation stored successfully',
     }, { headers: corsHeaders });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Delegation] Error storing delegation:', error);
     return NextResponse.json(
-      { error: 'Failed to store delegation' },
+      { error: 'Failed to store delegation', details: error.message },
       { status: 500, headers: corsHeaders }
     );
   }
 }
 
-export async function GET(request: NextRequest) {
+async function getDelegationsHandler(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const smartAccountAddress = searchParams.get('smartAccountAddress');
-    const issuerAddress = searchParams.get('issuerAddress');
+    // Get issuer address from authenticated request
+    const issuerAddress = (req as any).address;
 
-    if (!smartAccountAddress && !issuerAddress) {
-      return NextResponse.json(
-        { error: 'Provide either smartAccountAddress or issuerAddress' },
-        { status: 400, headers: corsHeaders }
+    const { searchParams } = new URL(req.url);
+    const smartAccountAddress = searchParams.get('smartAccountAddress');
+    const includeRevoked = searchParams.get('includeRevoked') === 'true';
+
+    // Fetch delegations
+    const delegations = await DelegationModel.findByIssuer(issuerAddress, includeRevoked);
+
+    // Filter by smart account if provided
+    let filteredDelegations = delegations;
+    if (smartAccountAddress) {
+      filteredDelegations = delegations.filter(
+        d => d.smartAccountAddress.toLowerCase() === smartAccountAddress.toLowerCase()
       );
     }
 
-    // Filter delegations
-    const delegations = Array.from(delegationsStore.values()).filter(d => {
-      if (smartAccountAddress && d.smartAccountAddress !== smartAccountAddress.toLowerCase()) {
-        return false;
-      }
-      if (issuerAddress && d.issuerAddress !== issuerAddress.toLowerCase()) {
-        return false;
-      }
-      return true;
-    });
-
     return NextResponse.json({
-      delegations,
-      count: delegations.length,
+      delegations: filteredDelegations.map(d => ({
+        id: d._id?.toString(),
+        smartAccountAddress: d.smartAccountAddress,
+        issuerAddress: d.issuerAddress,
+        backendAddress: d.backendAddress,
+        maxCalls: d.maxCalls,
+        callsUsed: d.callsUsed,
+        createdAt: d.createdAt,
+        expiresAt: d.expiresAt,
+        isRevoked: d.isRevoked,
+        revokedAt: d.revokedAt,
+        // Don't send the actual delegation object for security
+      })),
+      count: filteredDelegations.length,
     }, { headers: corsHeaders });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Delegation] Error fetching delegations:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch delegations' },
+      { error: 'Failed to fetch delegations', details: error.message },
       { status: 500, headers: corsHeaders }
     );
   }
 }
 
-// Export the delegations store for use by other API routes
-export { delegationsStore };
+// Export with authentication
+export const POST = withAuth(postDelegationHandler);
+export const GET = withAuth(getDelegationsHandler);
