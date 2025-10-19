@@ -19,13 +19,13 @@ export async function OPTIONS(request: NextRequest) {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-async function postDelegationHandler(req: NextRequest) {
+async function postDelegationHandler(req: NextRequest, auth: { address: string }) {
   try {
     const body = await req.json();
     const { delegation, smartAccountAddress, maxCalls, expiresAt } = body;
 
     // Get issuer address from authenticated request
-    const issuerAddress = (req as any).address;
+    const issuerAddress = auth.address;
 
     // Validate inputs
     if (!delegation || !smartAccountAddress) {
@@ -48,15 +48,26 @@ async function postDelegationHandler(req: NextRequest) {
       throw new Error('Backend delegation address not configured');
     }
 
+    // Extract VeriCredSBT address from delegation caveats
+    const veriCredSBTAddress = delegation.caveats?.find((c: any) =>
+      c.enforcer && c.terms
+    )?.terms || process.env.NEXT_PUBLIC_VERICRED_SBT_ADDRESS || '';
+
     // Create delegation in database
-    const delegationId = await DelegationModel.createDelegation({
+    const createdDelegation = await DelegationModel.create({
       issuerAddress,
       smartAccountAddress: smartAccountAddress.toLowerCase(),
       backendAddress: backendAddress.toLowerCase(),
       delegation,
       maxCalls: maxCalls || 100,
       expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+      metadata: {
+        veriCredSBTAddress,
+        caveats: delegation.caveats?.map((c: any) => c.enforcer) || [],
+      },
     });
+
+    const delegationId = createdDelegation._id?.toString();
 
     console.log('[Delegation] Stored delegation:', {
       id: delegationId,
@@ -80,17 +91,20 @@ async function postDelegationHandler(req: NextRequest) {
   }
 }
 
-async function getDelegationsHandler(req: NextRequest) {
+async function getDelegationsHandler(req: NextRequest, auth: { address: string }) {
   try {
     // Get issuer address from authenticated request
-    const issuerAddress = (req as any).address;
+    const issuerAddress = auth.address;
 
     const { searchParams } = new URL(req.url);
     const smartAccountAddress = searchParams.get('smartAccountAddress');
     const includeRevoked = searchParams.get('includeRevoked') === 'true';
 
     // Fetch delegations
-    const delegations = await DelegationModel.findByIssuer(issuerAddress, includeRevoked);
+    const allDelegations = await DelegationModel.getAllForIssuer(issuerAddress);
+    const delegations = includeRevoked
+      ? allDelegations
+      : allDelegations.filter(d => !d.isRevoked);
 
     // Filter by smart account if provided
     let filteredDelegations = delegations;

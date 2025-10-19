@@ -24,7 +24,7 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-async function issueCredentialHandler(req: NextRequest) {
+async function issueCredentialHandler(req: NextRequest, auth: { address: string }) {
   try {
     const body = await req.json();
     const {
@@ -37,18 +37,30 @@ async function issueCredentialHandler(req: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!recipientAddress || !credentialType || !credentialData || !delegationId) {
+    if (!recipientAddress || !credentialType || !credentialData) {
       return NextResponse.json(
-        { error: 'Missing required fields: recipientAddress, credentialType, credentialData, delegationId' },
+        { error: 'Missing required fields: recipientAddress, credentialType, credentialData' },
         { status: 400, headers: corsHeaders }
       );
     }
 
     // Get issuer address from authenticated request
-    const issuerAddress = (req as any).address;
+    const issuerAddress = auth.address;
 
     // 1. Fetch and validate delegation
-    const delegation = await DelegationModel.findById(delegationId);
+    let delegation;
+    if (delegationId === "auto" || !delegationId) {
+      // Auto-find active delegation for this issuer
+      delegation = await DelegationModel.findActiveByIssuer(issuerAddress);
+      if (!delegation) {
+        return NextResponse.json(
+          { error: 'No active delegation found. Please create a delegation first.' },
+          { status: 404, headers: corsHeaders }
+        );
+      }
+    } else {
+      delegation = await DelegationModel.findById(delegationId);
+    }
     if (!delegation) {
       return NextResponse.json(
         { error: 'Delegation not found' },

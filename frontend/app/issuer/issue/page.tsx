@@ -22,9 +22,25 @@ export default function IssueCredentialPage() {
 
   // Form state
   const [recipientAddress, setRecipientAddress] = useState("");
+  const [recipientName, setRecipientName] = useState("");
   const [credentialType, setCredentialType] = useState("");
-  const [metadata, setMetadata] = useState("");
   const [expiryDays, setExpiryDays] = useState(365);
+
+  // Dynamic credential fields based on type
+  const [institution, setInstitution] = useState("");
+  const [degreeName, setDegreeName] = useState("");
+  const [graduationYear, setGraduationYear] = useState("");
+  const [gpa, setGpa] = useState("");
+
+  const [organization, setOrganization] = useState("");
+  const [certificateName, setCertificateName] = useState("");
+  const [issueDate, setIssueDate] = useState("");
+  const [skills, setSkills] = useState("");
+
+  const [companyName, setCompanyName] = useState("");
+  const [position, setPosition] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // AI Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -35,13 +51,39 @@ export default function IssueCredentialPage() {
   const [issueSuccess, setIssueSuccess] = useState(false);
 
   const credentialTypes = [
-    "University Degree",
-    "Professional Certificate",
-    "Employment Verification",
-    "KYC Verification",
-    "Age Verification",
-    "Custom Credential",
+    "Bachelor_Degree",
+    "Professional_Certificate",
+    "Employment_Verification",
   ];
+
+  // Build metadata based on credential type
+  const buildMetadata = () => {
+    switch (credentialType) {
+      case "Bachelor_Degree":
+        return {
+          institution,
+          degree: degreeName,
+          graduationYear: parseInt(graduationYear) || new Date().getFullYear(),
+          gpa: gpa || "N/A",
+        };
+      case "Professional_Certificate":
+        return {
+          organization,
+          certificateName,
+          issueDate,
+          skills: skills.split(",").map((s) => s.trim()).filter((s) => s),
+        };
+      case "Employment_Verification":
+        return {
+          companyName,
+          position,
+          startDate,
+          endDate: endDate || "Present",
+        };
+      default:
+        return {};
+    }
+  };
 
   const analyzeRecipient = async () => {
     if (!recipientAddress) return;
@@ -75,34 +117,56 @@ export default function IssueCredentialPage() {
   };
 
   const handleIssueCredential = async () => {
-    if (!recipientAddress || !credentialType) return;
+    if (!recipientAddress || !credentialType || !recipientName) return;
 
     setIsIssuing(true);
     try {
+      const credentialData = buildMetadata();
+
       const response = await fetch(`${BACKEND_URL}/api/credentials/issue`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipientAddress,
+          recipientName,
+          issuerName: "VeriCred Issuer", // You can make this dynamic
           credentialType,
-          metadata,
-          expiryDays,
+          credentialData,
+          delegationId: "auto", // Backend will find active delegation
         }),
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log("Credential issued:", result);
         setIssueSuccess(true);
-        // Reset form after 2 seconds
+        // Reset form after 3 seconds
         setTimeout(() => {
           setRecipientAddress("");
+          setRecipientName("");
           setCredentialType("");
-          setMetadata("");
+          setInstitution("");
+          setDegreeName("");
+          setGraduationYear("");
+          setGpa("");
+          setOrganization("");
+          setCertificateName("");
+          setIssueDate("");
+          setSkills("");
+          setCompanyName("");
+          setPosition("");
+          setStartDate("");
+          setEndDate("");
           setRiskAnalysis(null);
           setIssueSuccess(false);
-        }, 2000);
+        }, 3000);
+      } else {
+        const error = await response.json();
+        alert(`Failed to issue credential: ${error.error || error.message}`);
       }
     } catch (error) {
       console.error("Failed to issue credential:", error);
+      alert("Failed to issue credential. Check console for details.");
     } finally {
       setIsIssuing(false);
     }
@@ -136,6 +200,21 @@ export default function IssueCredentialPage() {
                   value={recipientAddress}
                   onChange={(e) => setRecipientAddress(e.target.value)}
                   placeholder="0x..."
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                />
+              </div>
+
+              {/* Recipient Name */}
+              <div>
+                <label className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Recipient Name
+                </label>
+                <input
+                  type="text"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder="John Doe"
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
                 />
               </div>
@@ -227,33 +306,166 @@ export default function IssueCredentialPage() {
                 </select>
               </div>
 
-              {/* Expiry */}
-              <div>
-                <label className="text-sm font-medium text-white mb-2 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Expiry (Days)
-                </label>
-                <input
-                  type="number"
-                  value={expiryDays}
-                  onChange={(e) => setExpiryDays(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-emerald-500/40 transition-colors"
-                />
-              </div>
+              {/* Dynamic Fields Based on Credential Type */}
+              {credentialType === "Bachelor_Degree" && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Institution Name
+                    </label>
+                    <input
+                      type="text"
+                      value={institution}
+                      onChange={(e) => setInstitution(e.target.value)}
+                      placeholder="Massachusetts Institute of Technology"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Degree Name
+                    </label>
+                    <input
+                      type="text"
+                      value={degreeName}
+                      onChange={(e) => setDegreeName(e.target.value)}
+                      placeholder="Bachelor of Science in Computer Science"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-white mb-2 block">
+                        Graduation Year
+                      </label>
+                      <input
+                        type="number"
+                        value={graduationYear}
+                        onChange={(e) => setGraduationYear(e.target.value)}
+                        placeholder="2024"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-white mb-2 block">
+                        GPA (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={gpa}
+                        onChange={(e) => setGpa(e.target.value)}
+                        placeholder="3.8"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
-              {/* Metadata */}
-              <div>
-                <label className="text-sm font-medium text-white mb-2 block">
-                  Additional Metadata (Optional)
-                </label>
-                <textarea
-                  value={metadata}
-                  onChange={(e) => setMetadata(e.target.value)}
-                  placeholder="Additional information about this credential..."
-                  rows={4}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors resize-none"
-                />
-              </div>
+              {credentialType === "Professional_Certificate" && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Issuing Organization
+                    </label>
+                    <input
+                      type="text"
+                      value={organization}
+                      onChange={(e) => setOrganization(e.target.value)}
+                      placeholder="VeriCred Academy"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Certificate Name
+                    </label>
+                    <input
+                      type="text"
+                      value={certificateName}
+                      onChange={(e) => setCertificateName(e.target.value)}
+                      placeholder="Blockchain Development Professional"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Issue Date
+                    </label>
+                    <input
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Skills (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={skills}
+                      onChange={(e) => setSkills(e.target.value)}
+                      placeholder="Solidity, Smart Contracts, Web3"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                </>
+              )}
+
+              {credentialType === "Employment_Verification" && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="VeriCred Inc."
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-white mb-2 block">
+                      Position
+                    </label>
+                    <input
+                      type="text"
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      placeholder="Senior Blockchain Developer"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-white mb-2 block">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-emerald-500/40 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-white mb-2 block">
+                        End Date (Optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-emerald-500/40 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Success Message */}
               {issueSuccess && (
@@ -272,7 +484,7 @@ export default function IssueCredentialPage() {
               {/* Issue Button */}
               <button
                 onClick={handleIssueCredential}
-                disabled={!recipientAddress || !credentialType || isIssuing}
+                disabled={!recipientAddress || !recipientName || !credentialType || isIssuing}
                 className="w-full group relative inline-flex items-center justify-center px-6 py-4 text-base font-semibold text-black overflow-hidden transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div

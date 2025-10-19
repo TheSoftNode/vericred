@@ -20,6 +20,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { walletService } from "@/lib/delegation/wallet";
 import { delegationService } from "@/lib/delegation/delegation.service";
+import { ApiClient } from "@/lib/api/client";
 import type { Address } from "viem";
 
 // Configuration
@@ -57,20 +58,36 @@ export default function IssuerDashboard() {
 
   const checkExistingDelegation = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/delegations?issuerAddress=${walletAddress}`);
+      // walletAddress being set means wallet is connected
+      if (!walletAddress) {
+        console.log('⏳ Wallet not connected yet, skipping delegation check');
+        return;
+      }
+
+      const response = await ApiClient.get(`${BACKEND_URL}/api/delegations`);
       if (response.ok) {
         const data = await response.json();
         if (data.delegations && data.delegations.length > 0) {
-          const activeDelegation = data.delegations.find((d: any) => d.status === 'active');
+          // Find active delegation (not revoked, not expired)
+          const activeDelegation = data.delegations.find((d: any) =>
+            !d.isRevoked && new Date(d.expiresAt) > new Date()
+          );
           if (activeDelegation) {
             setDelegationId(activeDelegation.id);
             setSmartAccountAddress(activeDelegation.smartAccountAddress);
             setHasDelegation(true);
+            console.log('✅ Found active delegation:', activeDelegation.id);
+          } else {
+            console.log('⚠️ No active delegation found');
+            setHasDelegation(false);
           }
+        } else {
+          setHasDelegation(false);
         }
       }
     } catch (error) {
       console.error("Failed to check existing delegation:", error);
+      setHasDelegation(false);
     }
   };
 

@@ -24,6 +24,7 @@ import { createCaveatBuilder } from '@metamask/delegation-toolkit/utils';
 import type { Address, Hex, PublicClient } from 'viem';
 import { walletService } from './wallet';
 import { monadTestnet } from './chains';
+import { generateAuthMessage } from '@/lib/auth/signature-auth';
 
 export interface SmartAccountInfo {
   address: Address;
@@ -36,6 +37,8 @@ export interface DelegationRequest {
   signature: Hex;
   issuerAddress: Address;
   smartAccountAddress: Address;
+  maxCalls?: number;
+  expiresAt?: Date;
 }
 
 class DelegationService {
@@ -241,11 +244,17 @@ class DelegationService {
       signature,
     };
 
+    // Calculate expiry date
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + params.expiryDays);
+
     return {
       delegation: signedDelegation,
       signature,
       issuerAddress: connection.address,
       smartAccountAddress: this.smartAccount.address,
+      maxCalls: params.maxCredentials,
+      expiresAt,
     };
   }
 
@@ -259,15 +268,35 @@ class DelegationService {
   ): Promise<{ delegationId: string; success: boolean }> {
     console.log('Sending delegation to backend:', backendUrl);
 
+    // Get wallet connection for signing auth message
+    const connection = walletService.getConnection();
+    if (!connection) {
+      throw new Error('Wallet not connected');
+    }
+
+    // Create authentication signature
+    const timestamp = Date.now();
+    const authMessage = generateAuthMessage(timestamp);
+
+    // Sign with user's wallet (EOA, not smart account)
+    const authSignature = await connection.walletClient.signMessage({
+      account: connection.address,
+      message: authMessage,
+    });
+
     const response = await fetch(`${backendUrl}/api/delegations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-address': delegationRequest.issuerAddress,
+        'x-signature': authSignature,
+        'x-timestamp': timestamp.toString(),
       },
       body: JSON.stringify({
         delegation: delegationRequest.delegation,
-        issuerAddress: delegationRequest.issuerAddress,
         smartAccountAddress: delegationRequest.smartAccountAddress,
+        maxCalls: delegationRequest.maxCalls,
+        expiresAt: delegationRequest.expiresAt?.toISOString(),
       }),
     });
 
