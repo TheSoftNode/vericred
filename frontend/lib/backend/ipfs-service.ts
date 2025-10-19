@@ -158,8 +158,8 @@ class IPFSService {
     issuerAddress: string;
     recipientAddress: string;
     recipientName?: string;
-    issuedDate: Date;
-    expirationDate?: Date;
+    issuedDate: Date | string;
+    expirationDate?: Date | string;
     credentialHash: string;
     additionalData?: Record<string, any>;
   }): CredentialMetadata {
@@ -173,8 +173,8 @@ class IPFSService {
         issuerAddress: params.issuerAddress,
         recipient: params.recipientAddress,
         recipientName: params.recipientName,
-        issuedDate: params.issuedDate.toISOString(),
-        expirationDate: params.expirationDate?.toISOString(),
+        issuedDate: typeof params.issuedDate === 'string' ? params.issuedDate : params.issuedDate.toISOString(),
+        expirationDate: params.expirationDate ? (typeof params.expirationDate === 'string' ? params.expirationDate : params.expirationDate.toISOString()) : undefined,
         credentialHash: params.credentialHash,
         additionalData: params.additionalData,
       },

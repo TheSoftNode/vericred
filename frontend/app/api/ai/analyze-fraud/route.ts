@@ -18,7 +18,7 @@ import {
 } from '@/lib/server/envio';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const OPENAI_MODEL = 'gpt-4o';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 interface FraudAnalysisRequest {
   recipientAddress: string;
@@ -166,7 +166,8 @@ Example:
 }`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Use responses.create API for gpt-5-nano
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -174,27 +175,18 @@ Example:
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a fraud detection AI. Respond only with valid JSON.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3, // Low temperature for consistent analysis
-        max_tokens: 500,
+        input: `You are a fraud detection AI analyzing credential issuance risk. ${prompt}\n\nRespond ONLY with valid JSON in this exact format:\n{"riskScore": <number 0-100>, "riskLevel": "<LOW|MEDIUM|HIGH>", "recommendation": "<string>", "redFlags": [<array of strings>]}`,
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[AI] OpenAI API error response:', errorText);
       throw new Error(`OpenAI API error: ${response.statusText}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content || '{}';
+    const aiResponse = data.output_text || '{}';
 
     // Parse AI response
     const aiAnalysis = JSON.parse(aiResponse);

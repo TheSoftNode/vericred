@@ -17,10 +17,12 @@ import {
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { walletService } from "@/lib/delegation/wallet";
 import { delegationService } from "@/lib/delegation/delegation.service";
 import { ApiClient } from "@/lib/api/client";
+import { toast } from "sonner";
 import type { Address } from "viem";
 
 // Configuration
@@ -35,11 +37,25 @@ export default function IssuerDashboard() {
 
   // Issue Credential State
   const [recipientAddress, setRecipientAddress] = useState("");
+  const [recipientName, setRecipientName] = useState("");
   const [credentialType, setCredentialType] = useState("");
-  const [metadata, setMetadata] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [riskAnalysis, setRiskAnalysis] = useState<any>(null);
   const [isIssuing, setIsIssuing] = useState(false);
+
+  // Dynamic credential fields
+  const [institution, setInstitution] = useState("");
+  const [degreeName, setDegreeName] = useState("");
+  const [graduationYear, setGraduationYear] = useState("");
+  const [gpa, setGpa] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [certificateName, setCertificateName] = useState("");
+  const [issueDate, setIssueDate] = useState("");
+  const [skills, setSkills] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [position, setPosition] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // Delegation State
   const [maxCredentials, setMaxCredentials] = useState(100);
@@ -128,53 +144,132 @@ export default function IssuerDashboard() {
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/ai/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipientAddress,
-          issuerAddress: walletAddress,
-        }),
+      const response = await ApiClient.post(`${BACKEND_URL}/api/ai/analyze-fraud`, {
+        recipientAddress,
+        issuerAddress: walletAddress,
+        credentialType: credentialType || "Unknown",
       });
 
       if (response.ok) {
         const analysis = await response.json();
         setRiskAnalysis(analysis);
+
+        // Show professional toast
+        if (analysis.riskLevel === 'LOW') {
+          toast.success("AI Analysis Complete", {
+            description: `Low Risk (${analysis.riskScore}/100) - ${analysis.recommendation}`,
+          });
+        } else if (analysis.riskLevel === 'MEDIUM') {
+          toast.warning("AI Analysis Complete", {
+            description: `Medium Risk (${analysis.riskScore}/100) - ${analysis.recommendation}`,
+          });
+        } else {
+          toast.error("AI Analysis Complete", {
+            description: `High Risk (${analysis.riskScore}/100) - ${analysis.recommendation}`,
+          });
+        }
+      } else {
+        toast.error("AI Analysis failed", {
+          description: "Unable to perform fraud analysis. Please try again.",
+        });
       }
     } catch (error) {
       console.error("AI Analysis failed:", error);
       setRiskAnalysis({
         riskScore: 50,
+        riskLevel: "MEDIUM",
         recommendation: "Unable to analyze. Verify manually.",
+        factors: [],
+      });
+      toast.error("AI Analysis unavailable", {
+        description: "Proceeding without AI fraud analysis.",
       });
     } finally {
       setIsAnalyzing(false);
     }
   };
 
+  // Build metadata based on credential type
+  const buildMetadata = () => {
+    switch (credentialType) {
+      case "Bachelor_Degree":
+        return {
+          institution,
+          degree: degreeName,
+          graduationYear: parseInt(graduationYear) || new Date().getFullYear(),
+          gpa: gpa || "N/A",
+        };
+      case "Professional_Certificate":
+        return {
+          organization,
+          certificateName,
+          issueDate,
+          skills: skills.split(",").map((s) => s.trim()).filter((s) => s),
+        };
+      case "Employment_Verification":
+        return {
+          companyName,
+          position,
+          startDate,
+          endDate: endDate || "Present",
+        };
+      default:
+        return {};
+    }
+  };
+
   // Issue Credential
   const handleIssueCredential = async () => {
-    if (!recipientAddress || !credentialType || !delegationId) return;
+    if (!recipientAddress || !credentialType || !recipientName || !delegationId) return;
 
     setIsIssuing(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/credentials/issue`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          delegationId,
-          recipientAddress,
-          credentialType,
-          metadata,
-        }),
+      const credentialData = buildMetadata();
+
+      const response = await ApiClient.post(`${BACKEND_URL}/api/credentials/issue`, {
+        delegationId: "auto",
+        recipientAddress,
+        recipientName,
+        issuerName: "VeriCred Issuer",
+        credentialType,
+        credentialData,
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log("Credential issued:", result);
+        // Reset form
+        setRecipientAddress("");
+        setRecipientName("");
+        setCredentialType("");
+        setInstitution("");
+        setDegreeName("");
+        setGraduationYear("");
+        setGpa("");
+        setOrganization("");
+        setCertificateName("");
+        setIssueDate("");
+        setSkills("");
+        setCompanyName("");
+        setPosition("");
+        setStartDate("");
+        setEndDate("");
+        setRiskAnalysis(null);
         setShowIssueModal(false);
-        // Refresh dashboard
+        toast.success("Credential issued successfully!", {
+          description: `Token ID: ${result.tokenId}`,
+        });
+      } else {
+        const error = await response.json();
+        toast.error("Failed to issue credential", {
+          description: error.error || error.message,
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to issue credential:", error);
+      toast.error("Failed to issue credential", {
+        description: error.message || "An unexpected error occurred",
+      });
     } finally {
       setIsIssuing(false);
     }
@@ -492,9 +587,10 @@ export default function IssuerDashboard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-slate-950 border border-white/10 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              className="relative bg-slate-950 border border-white/10 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col"
             >
-              <div className="flex items-center justify-between mb-6">
+              {/* Header - Fixed */}
+              <div className="flex items-center justify-between p-6 pb-4 border-b border-white/10">
                 <h3 className="text-xl font-black text-white">
                   Issue Credential
                 </h3>
@@ -506,10 +602,11 @@ export default function IssuerDashboard() {
                 </button>
               </div>
 
-              <div className="space-y-4">
+              {/* Scrollable Content */}
+              <div className="overflow-y-auto px-6 py-4 space-y-3">
                 {/* Recipient Address */}
                 <div>
-                  <label className="text-sm font-medium text-white mb-2 block">
+                  <label className="text-xs font-medium text-white mb-1.5 block">
                     Recipient Address
                   </label>
                   <input
@@ -517,7 +614,21 @@ export default function IssuerDashboard() {
                     value={recipientAddress}
                     onChange={(e) => setRecipientAddress(e.target.value)}
                     placeholder="0x..."
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                    className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                  />
+                </div>
+
+                {/* Recipient Name */}
+                <div>
+                  <label className="text-xs font-medium text-white mb-1.5 block">
+                    Recipient Name
+                  </label>
+                  <input
+                    type="text"
+                    value={recipientName}
+                    onChange={(e) => setRecipientName(e.target.value)}
+                    placeholder="John Doe"
+                    className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
                   />
                 </div>
 
@@ -550,7 +661,7 @@ export default function IssuerDashboard() {
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`p-4 rounded-xl border ${
+                    className={`p-3 rounded-xl border ${
                       riskAnalysis.riskScore < 30
                         ? "bg-emerald-500/10 border-emerald-500/30"
                         : riskAnalysis.riskScore < 70
@@ -559,7 +670,7 @@ export default function IssuerDashboard() {
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <Sparkles
+                      <Brain
                         className={`w-4 h-4 ${
                           riskAnalysis.riskScore < 30
                             ? "text-emerald-400"
@@ -569,7 +680,7 @@ export default function IssuerDashboard() {
                         }`}
                       />
                       <span
-                        className={`text-sm font-semibold ${
+                        className={`text-xs font-bold ${
                           riskAnalysis.riskScore < 30
                             ? "text-emerald-400"
                             : riskAnalysis.riskScore < 70
@@ -577,53 +688,124 @@ export default function IssuerDashboard() {
                             : "text-red-400"
                         }`}
                       >
-                        {riskAnalysis.riskScore < 30
-                          ? "🟢 Low Risk"
-                          : riskAnalysis.riskScore < 70
-                          ? "🟡 Medium Risk"
-                          : "🔴 High Risk"}{" "}
-                        ({riskAnalysis.riskScore}/100)
+                        AI Fraud Analysis: {riskAnalysis.riskLevel} Risk ({riskAnalysis.riskScore}/100)
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">
-                      {riskAnalysis.recommendation}
+                    <p className="text-xs text-slate-300 mb-2">
+                      <strong>Recommendation:</strong> {riskAnalysis.recommendation}
                     </p>
+                    {riskAnalysis.factors && riskAnalysis.factors.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-white/10">
+                        <p className="text-xs text-slate-400 mb-1">Risk Factors Analyzed:</p>
+                        <ul className="text-xs text-slate-400 space-y-0.5 pl-4">
+                          {riskAnalysis.factors.map((factor: string, i: number) => (
+                            <li key={i} className="list-disc">{factor}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-1 text-xs text-slate-500">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Powered by OpenAI {process.env.NEXT_PUBLIC_OPENAI_MODEL || 'GPT-4'}</span>
+                    </div>
                   </motion.div>
                 )}
 
                 {/* Credential Type */}
                 <div>
-                  <label className="text-sm font-medium text-white mb-2 block">
+                  <label className="text-xs font-medium text-white mb-1.5 block">
                     Credential Type
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={credentialType}
                     onChange={(e) => setCredentialType(e.target.value)}
-                    placeholder="e.g., Bachelor of Science"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
-                  />
+                    className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/40 transition-colors"
+                  >
+                    <option value="">Select type...</option>
+                    <option value="Bachelor_Degree">Bachelor Degree</option>
+                    <option value="Professional_Certificate">Professional Certificate</option>
+                    <option value="Employment_Verification">Employment Verification</option>
+                  </select>
                 </div>
 
-                {/* Metadata */}
-                <div>
-                  <label className="text-sm font-medium text-white mb-2 block">
-                    Metadata (Optional)
-                  </label>
-                  <textarea
-                    value={metadata}
-                    onChange={(e) => setMetadata(e.target.value)}
-                    placeholder="Additional information..."
-                    rows={3}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40 transition-colors resize-none"
-                  />
-                </div>
+                {/* Dynamic Fields for Bachelor Degree */}
+                {credentialType === "Bachelor_Degree" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Institution</label>
+                      <input type="text" value={institution} onChange={(e) => setInstitution(e.target.value)} placeholder="MIT" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Degree Name</label>
+                      <input type="text" value={degreeName} onChange={(e) => setDegreeName(e.target.value)} placeholder="BS in Computer Science" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-white mb-1.5 block">Year</label>
+                        <input type="number" value={graduationYear} onChange={(e) => setGraduationYear(e.target.value)} placeholder="2024" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-white mb-1.5 block">GPA</label>
+                        <input type="text" value={gpa} onChange={(e) => setGpa(e.target.value)} placeholder="3.8" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                      </div>
+                    </div>
+                  </>
+                )}
 
-                {/* Issue Button */}
+                {/* Dynamic Fields for Professional Certificate */}
+                {credentialType === "Professional_Certificate" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Organization</label>
+                      <input type="text" value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="VeriCred Academy" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Certificate Name</label>
+                      <input type="text" value={certificateName} onChange={(e) => setCertificateName(e.target.value)} placeholder="Blockchain Professional" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Issue Date</label>
+                      <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Skills (comma-separated)</label>
+                      <input type="text" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Solidity, Web3" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                  </>
+                )}
+
+                {/* Dynamic Fields for Employment Verification */}
+                {credentialType === "Employment_Verification" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Company</label>
+                      <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="VeriCred Inc" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-white mb-1.5 block">Position</label>
+                      <input type="text" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Senior Developer" className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/40" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-white mb-1.5 block">Start Date</label>
+                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/40" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-white mb-1.5 block">End (Optional)</label>
+                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/40" />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+              </div>
+
+              {/* Fixed Footer with Button */}
+              <div className="p-6 pt-4 border-t border-white/10">
                 <button
                   onClick={handleIssueCredential}
                   disabled={
-                    !recipientAddress || !credentialType || isIssuing || !delegationId
+                    !recipientAddress || !recipientName || !credentialType || isIssuing || !delegationId
                   }
                   className="w-full group relative inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-black overflow-hidden transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

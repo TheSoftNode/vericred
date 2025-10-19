@@ -69,7 +69,7 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
       {/* Desktop Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: sidebarOpen ? 280 : 80 }}
+        animate={{ width: sidebarOpen ? 240 : 72 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="hidden lg:flex flex-col border-r border-white/10 bg-slate-950/50 backdrop-blur-xl relative"
       >

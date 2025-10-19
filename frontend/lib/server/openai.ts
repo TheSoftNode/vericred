@@ -44,9 +44,10 @@ export async function analyzeFraudRisk(params: {
       priorInteractions
     );
 
-    // 3. Call OpenAI GPT-4o
+    // 3. Call OpenAI
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model,
       messages: [
         {
           role: 'system',

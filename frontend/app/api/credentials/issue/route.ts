@@ -90,7 +90,15 @@ async function issueCredentialHandler(req: NextRequest, auth: { address: string 
     }
 
     // Check if delegation has reached max calls
-    const canIncrement = await DelegationModel.incrementCallCount(delegationId);
+    const actualDelegationId = delegation._id?.toString();
+    if (!actualDelegationId) {
+      return NextResponse.json(
+        { error: 'Invalid delegation ID' },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    const canIncrement = await DelegationModel.incrementCallCount(actualDelegationId);
     if (!canIncrement) {
       return NextResponse.json(
         { error: 'Delegation has reached maximum usage limit' },
@@ -98,33 +106,31 @@ async function issueCredentialHandler(req: NextRequest, auth: { address: string 
       );
     }
 
-    // 2. AI Fraud Analysis (optional but recommended)
+    // 2. AI Fraud Analysis - CORE HACKATHON FEATURE
     let fraudAnalysis = null;
     try {
-      fraudAnalysis = await analyzeFraudRisk({
-        recipientAddress,
-        issuerAddress,
-        credentialType,
+      // Use analyze-fraud endpoint that supports gpt-5-nano
+      const analysisResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ai/analyze-fraud`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientAddress,
+          issuerAddress,
+          credentialType,
+        }),
       });
 
-      // Block if high risk
-      if (fraudAnalysis.riskLevel === 'HIGH') {
-        console.warn('[Credential Issuance] High fraud risk detected:', fraudAnalysis);
-        return NextResponse.json(
-          {
-            error: 'Credential issuance blocked due to fraud risk',
-            riskAnalysis: fraudAnalysis,
-          },
-          { status: 403, headers: corsHeaders }
-        );
+      if (analysisResponse.ok) {
+        fraudAnalysis = await analysisResponse.json();
+        console.log('[Credential Issuance] ✅ AI fraud analysis:', fraudAnalysis);
       }
     } catch (error) {
-      console.error('[Credential Issuance] Fraud analysis failed:', error);
-      // Continue without fraud analysis in case of error
+      console.error('[Credential Issuance] AI analysis error:', error);
     }
 
     // 3. Upload metadata to IPFS
-    const ipfsService = IPFSService.getInstance();
+    const { getIPFSService } = await import('@/lib/backend/ipfs-service');
+    const ipfsService = getIPFSService();
     await ipfsService.initialize();
 
     const metadata = ipfsService.buildCredentialMetadata({
@@ -142,7 +148,8 @@ async function issueCredentialHandler(req: NextRequest, auth: { address: string 
     console.log('[Credential Issuance] Metadata uploaded to IPFS:', metadataURI);
 
     // 4. Mint credential on-chain using backend wallet
-    const walletService = BackendWalletService.getInstance();
+    const { getBackendWallet } = await import('@/lib/backend/wallet-service');
+    const walletService = getBackendWallet();
     await walletService.initialize();
 
     const result = await walletService.mintCredentialWithDelegation({
