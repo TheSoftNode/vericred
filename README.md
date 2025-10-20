@@ -145,31 +145,31 @@ sequenceDiagram
 ## 🖼️ Screenshots
 
 ### Issuer Dashboard
-![Issuer Dashboard](docs/images/Issuer-dashboard.png)
+![Issuer Dashboard](docs/Images/Issuer-dashboard.png)
 *Issue credentials with AI fraud analysis and delegation management*
 
 ### Holder Dashboard
-![Holder Dashboard](docs/images/Holder-dashboard.png)
+![Holder Dashboard](docs/Images/Holder-dashboard.png)
 *View and share your credentials with Farcaster integration*
 
 ### Verifier Dashboard
-![Verifier Dashboard](docs/images/verifier-dashboard.png)
+![Verifier Dashboard](docs/Images/verifier-dashboard.png)
 *Verify credentials instantly with expandable verification history*
 
 ### Monad Testnet Transaction
-![Monad Testnet](docs/images/monad-testnet.png)
+![Monad Testnet](docs/Images/monad-testnet.png)
 *On-chain credential transactions on Monad blockchain*
 
 ### IPFS Metadata
-![IPFS](docs/images/ipfs.png)
+![IPFS](docs/Images/ipfs.png)
 *Decentralized credential metadata storage*
 
 ### Envio Indexer
-![Envio](docs/images/envio.png)
+![Envio](docs/Images/envio.png)
 *Real-time blockchain event indexing and GraphQL interface*
 
 ### Envio Code Integration
-![Envio Code](docs/images/envio-code.png)
+![Envio Code](docs/Images/envio-code.png)
 *Event handlers and indexer configuration*
 
 ---
