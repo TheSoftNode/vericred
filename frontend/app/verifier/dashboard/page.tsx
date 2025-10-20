@@ -32,6 +32,7 @@ interface Credential {
   expirationDate?: string;
   isRevoked: boolean;
   metadataURI?: string;
+  transactionHash?: string;
 }
 
 interface VerificationRecord {
@@ -63,6 +64,14 @@ export default function VerifierDashboard() {
     pending: 0,
     successRate: 0,
   });
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedAddress(label);
+    setTimeout(() => setCopiedAddress(null), 2000);
+  };
 
   // Fetch verification history on mount
   useEffect(() => {
@@ -72,24 +81,34 @@ export default function VerifierDashboard() {
 
   // Calculate stats when history changes
   useEffect(() => {
+    console.log('[Verifier] Recalculating stats from history:', verificationHistory.length, 'items');
     const total = verificationHistory.length;
     const valid = verificationHistory.filter((v) => v.status === "valid").length;
     const invalid = verificationHistory.filter((v) => v.status === "invalid" || v.status === "revoked").length;
     const pending = 0; // Can be expanded later for async verifications
     const successRate = total > 0 ? Math.round((valid / total) * 100) : 0;
 
+    console.log('[Verifier] New stats:', { total, valid, invalid, pending, successRate });
     setStats({ total, valid, invalid, pending, successRate });
   }, [verificationHistory]);
 
   const fetchVerificationHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      // In a real implementation, you'd fetch verification history from your backend
-      // For now, we'll keep it empty
-      const response = await fetch(`${BACKEND_URL}/api/verifications/history?verifier=${walletAddress}`);
+      console.log('[Verifier] Fetching history for wallet:', walletAddress);
+      const url = `${BACKEND_URL}/api/verifications/history?verifier=${walletAddress}`;
+      console.log('[Verifier] Fetch URL:', url);
+
+      const response = await fetch(url);
+      console.log('[Verifier] Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[Verifier] History data received:', data);
         setVerificationHistory(data.verifications || []);
+        console.log('[Verifier] State updated with', data.verifications?.length || 0, 'verifications');
+      } else {
+        console.error('[Verifier] Failed to fetch history:', response.statusText);
       }
     } catch (error) {
       console.error("Failed to fetch verification history:", error);
@@ -102,88 +121,92 @@ export default function VerifierDashboard() {
     if (!credentialId.trim()) return;
 
     setIsVerifying(true);
+
+    let status: "valid" | "invalid" | "expired" | "revoked" = "invalid";
+    let credential: any = null;
+    let message = "";
+
     try {
-      // Query MongoDB for credential data
       const response = await fetch(`${BACKEND_URL}/api/credentials/verify/${credentialId}`);
 
       if (!response.ok) {
-        setVerificationResult({
-          credential: null as any,
-          status: "invalid",
-          message: "Credential not found on blockchain",
-        });
+        status = "invalid";
+        message = "Credential not found on blockchain";
+        setVerificationResult({ credential: null as any, status, message });
         setShowResultModal(true);
-        setIsVerifying(false);
-        return;
-      }
+      } else {
+        const data = await response.json();
 
-      const data = await response.json();
+        if (!data.credential) {
+          status = "invalid";
+          message = "Credential not found";
+          setVerificationResult({ credential: null as any, status, message });
+          setShowResultModal(true);
+        } else {
+          credential = {
+            id: data.credential.tokenId,
+            tokenId: data.credential.tokenId,
+            credentialType: data.credential.credentialType,
+            issuer: data.credential.issuerAddress,
+            recipient: data.credential.recipientAddress,
+            issuanceDate: Math.floor(new Date(data.credential.createdAt).getTime() / 1000).toString(),
+            isRevoked: data.credential.isRevoked,
+            metadataURI: data.credential.metadataURI,
+            transactionHash: data.credential.transactionHash,
+          };
 
-      if (!data.credential) {
-        setVerificationResult({
-          credential: null as any,
-          status: "invalid",
-          message: "Credential not found",
-        });
-        setShowResultModal(true);
-        setIsVerifying(false);
-        return;
-      }
+          status = "valid";
+          message = "Credential is valid and verified on blockchain";
 
-      const credential = {
-        id: data.credential.tokenId,
-        tokenId: data.credential.tokenId,
-        credentialType: data.credential.credentialType,
-        issuer: data.credential.issuerAddress,
-        recipient: data.credential.recipientAddress,
-        issuanceDate: new Date(data.credential.createdAt).getTime().toString(),
-        isRevoked: data.credential.isRevoked,
-        metadataURI: data.credential.metadataURI,
-      };
+          if (credential.isRevoked) {
+            status = "revoked";
+            message = "This credential has been revoked by the issuer";
+          } else if (credential.expirationDate) {
+            const expiryDate = new Date(parseInt(credential.expirationDate) * 1000);
+            if (expiryDate < new Date()) {
+              status = "expired";
+              message = `Credential expired on ${expiryDate.toLocaleDateString()}`;
+            }
+          }
 
-      // Step 2: Verify credential validity
-      let status: "valid" | "invalid" | "expired" | "revoked" = "valid";
-      let message = "Credential is valid and verified on blockchain";
-
-      if (credential.isRevoked) {
-        status = "revoked";
-        message = "This credential has been revoked by the issuer";
-      } else if (credential.expirationDate) {
-        const expiryDate = new Date(parseInt(credential.expirationDate) * 1000);
-        if (expiryDate < new Date()) {
-          status = "expired";
-          message = `Credential expired on ${expiryDate.toLocaleDateString()}`;
+          setVerificationResult({ credential, status, message });
+          setShowResultModal(true);
         }
       }
-
-      setVerificationResult({ credential, status, message });
+    } catch (error) {
+      console.error("Verification failed:", error);
+      status = "invalid";
+      message = "Verification failed. Please check the credential ID and try again.";
+      setVerificationResult({ credential: null as any, status, message });
       setShowResultModal(true);
+    }
 
-      // Step 3: Log verification to backend
-      await fetch(`${BACKEND_URL}/api/verifications/log`, {
+    // ALWAYS save verification to database
+    try {
+      console.log('[Verifier] Saving verification to database');
+      const logResponse = await fetch(`${BACKEND_URL}/api/verifications/log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          verifierAddress: walletAddress,
-          credentialId: credential.id,
+          verifierAddress: walletAddress || 'anonymous',
+          credentialId: credentialId,
           tokenId: credentialId,
           status,
         }),
       });
 
-      // Refresh history
-      fetchVerificationHistory();
-    } catch (error) {
-      console.error("Verification failed:", error);
-      setVerificationResult({
-        credential: null as any,
-        status: "invalid",
-        message: "Verification failed. Please check the credential ID and try again.",
-      });
-      setShowResultModal(true);
-    } finally {
-      setIsVerifying(false);
+      if (!logResponse.ok) {
+        console.error('[Verifier] Failed to save:', await logResponse.text());
+      } else {
+        const logResult = await logResponse.json();
+        console.log('[Verifier] Saved successfully:', logResult);
+        await fetchVerificationHistory();
+      }
+    } catch (logError) {
+      console.error('[Verifier] Error saving verification:', logError);
     }
+
+    setIsVerifying(false);
   };
 
   const shortenAddress = (address: string) => {
@@ -447,36 +470,135 @@ export default function VerifierDashboard() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {verificationHistory.slice(0, 5).map((record) => (
-                        <motion.div
-                          key={record.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getStatusColor(record.status)}`}>
-                                {getStatusIcon(record.status)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-semibold text-white">
-                                  {record.credential?.credentialType || "Unknown Credential"}
-                                </p>
-                                <p className="text-xs text-slate-400">
-                                  Token ID: {record.credentialId.slice(0, 10)}...
-                                </p>
+                      {verificationHistory.slice(0, 5).map((record) => {
+                        const isExpanded = expandedRecordId === record.id;
+                        return (
+                          <motion.div
+                            key={record.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 transition-colors"
+                          >
+                            <div
+                              className="p-4 cursor-pointer"
+                              onClick={() => setExpandedRecordId(isExpanded ? null : record.id)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getStatusColor(record.status)}`}>
+                                    {getStatusIcon(record.status)}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-white">
+                                      {record.credential?.credentialType || "Unknown Credential"}
+                                    </p>
+                                    <p className="text-xs text-slate-400">
+                                      Token ID: {record.credentialId.slice(0, 10)}...
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className={`text-xs px-2 py-1 rounded-lg border ${getStatusColor(record.status)}`}>
+                                    {record.status.toUpperCase()}
+                                  </span>
+                                  <motion.div
+                                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                                  </motion.div>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className={`text-xs px-2 py-1 rounded-lg border ${getStatusColor(record.status)}`}>
-                                {record.status.toUpperCase()}
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-slate-500" />
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
+
+                            <AnimatePresence>
+                              {isExpanded && record.credential && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="border-t border-white/10"
+                                >
+                                  <div className="p-4 space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Token ID</p>
+                                        <p className="text-xs font-mono text-emerald-400">#{record.tokenId}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Status</p>
+                                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                          record.credential.isRevoked
+                                            ? "bg-red-500/10 text-red-400 border border-red-500/30"
+                                            : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                        }`}>
+                                          {record.credential.isRevoked ? "Revoked" : "Active"}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Issuer</p>
+                                        <div className="flex items-center gap-1">
+                                          <p className="text-xs font-mono text-white">{shortenAddress(record.credential.issuerAddress)}</p>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              copyToClipboard(record.credential!.issuerAddress, `issuer-${record.id}`);
+                                            }}
+                                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                                          >
+                                            {copiedAddress === `issuer-${record.id}` ? (
+                                              <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                              </motion.svg>
+                                            ) : (
+                                              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                              </svg>
+                                            )}
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Recipient</p>
+                                        <div className="flex items-center gap-1">
+                                          <p className="text-xs font-mono text-white">{shortenAddress(record.credential.recipientAddress)}</p>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              copyToClipboard(record.credential!.recipientAddress, `recipient-${record.id}`);
+                                            }}
+                                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                                          >
+                                            {copiedAddress === `recipient-${record.id}` ? (
+                                              <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                              </motion.svg>
+                                            ) : (
+                                              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                              </svg>
+                                            )}
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <div className="col-span-2">
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Verified At</p>
+                                        <p className="text-xs text-white">{new Date(record.verifiedAt).toLocaleString()}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                                      <Shield className="w-3 h-3 text-cyan-400" />
+                                      <span className="text-xs font-semibold text-cyan-400">Verified on Monad Blockchain</span>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -615,98 +737,117 @@ export default function VerifierDashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-slate-950 border border-white/10 rounded-2xl shadow-2xl z-50 max-h-[90vh] overflow-y-auto"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-slate-950 border border-white/10 rounded-2xl shadow-2xl z-50"
             >
-              <div className="p-8">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-black text-white">
-                    Verification Result
-                  </h2>
+              <div className="p-6">
+                {/* Header with Status Badge - Compact */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${getStatusColor(verificationResult.status)}`}>
+                      {getStatusIcon(verificationResult.status)}
+                    </div>
+                    <div>
+                      <h2 className={`text-lg font-bold ${
+                        verificationResult.status === "valid" ? "text-emerald-400" :
+                        verificationResult.status === "expired" ? "text-amber-400" :
+                        "text-red-400"
+                      }`}>
+                        {verificationResult.status === "valid" ? "✓ Verified" :
+                         verificationResult.status === "expired" ? "⚠ Expired" :
+                         verificationResult.status === "revoked" ? "✗ Revoked" :
+                         "✗ Invalid"}
+                      </h2>
+                      <p className="text-xs text-slate-400">{verificationResult.message}</p>
+                    </div>
+                  </div>
                   <button
                     onClick={() => setShowResultModal(false)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
                   >
-                    <X className="w-5 h-5 text-slate-400" />
+                    <X className="w-4 h-4 text-slate-400" />
                   </button>
                 </div>
 
-                {/* Status Badge */}
-                <div className="flex items-center justify-center mb-8">
-                  <div className={`w-24 h-24 rounded-2xl flex items-center justify-center border-2 ${getStatusColor(verificationResult.status)}`}>
-                    {getStatusIcon(verificationResult.status)}
-                  </div>
-                </div>
-
-                {/* Status Message */}
-                <div className="text-center mb-8">
-                  <h3 className={`text-2xl font-bold mb-2 ${
-                    verificationResult.status === "valid" ? "text-emerald-400" :
-                    verificationResult.status === "expired" ? "text-amber-400" :
-                    "text-red-400"
-                  }`}>
-                    {verificationResult.status === "valid" ? "Credential Valid" :
-                     verificationResult.status === "expired" ? "Credential Expired" :
-                     verificationResult.status === "revoked" ? "Credential Revoked" :
-                     "Invalid Credential"}
-                  </h3>
-                  <p className="text-slate-400">{verificationResult.message}</p>
-                </div>
-
-                {/* Credential Details */}
+                {/* Credential Details - Compact Grid */}
                 {verificationResult.credential && (
-                  <div className="space-y-4 bg-white/5 border border-white/10 rounded-xl p-6">
-                    <h4 className="text-sm font-bold text-white mb-4">Credential Details</h4>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-slate-400">Type</span>
-                        <span className="text-sm font-semibold text-white text-right">
-                          {verificationResult.credential.credentialType}
-                        </span>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Credential Type</p>
+                        <p className="text-sm font-semibold text-white break-words">
+                          {verificationResult.credential.credentialType.replace(/_/g, ' ')}
+                        </p>
                       </div>
-
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-slate-400">Token ID</span>
-                        <span className="text-sm font-mono text-white">
-                          {verificationResult.credential.tokenId}
-                        </span>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Token ID</p>
+                        <p className="text-sm font-mono text-emerald-400">#{verificationResult.credential.tokenId}</p>
                       </div>
-
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-slate-400">Issuer</span>
-                        <span className="text-sm font-mono text-white">
-                          {shortenAddress(verificationResult.credential.issuer)}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-slate-400">Recipient</span>
-                        <span className="text-sm font-mono text-white">
-                          {shortenAddress(verificationResult.credential.recipient)}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-slate-400">Issued</span>
-                        <span className="text-sm text-white">
-                          {formatDate(verificationResult.credential.issuanceDate)}
-                        </span>
-                      </div>
-
-                      {verificationResult.credential.expirationDate && (
-                        <div className="flex justify-between items-start">
-                          <span className="text-sm text-slate-400">Expires</span>
-                          <span className="text-sm text-white">
-                            {formatDate(verificationResult.credential.expirationDate)}
-                          </span>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Issuer</p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs font-mono text-white">{shortenAddress(verificationResult.credential.issuer)}</p>
+                          <button
+                            onClick={() => copyToClipboard(verificationResult.credential.issuer, 'issuer')}
+                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                            title="Copy issuer address"
+                          >
+                            {copiedAddress === 'issuer' ? (
+                              <motion.svg
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="w-3 h-3 text-emerald-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </motion.svg>
+                            ) : (
+                              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </button>
                         </div>
-                      )}
-
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm text-slate-400">Status</span>
-                        <span className={`text-sm font-semibold ${
-                          verificationResult.credential.isRevoked ? "text-red-400" : "text-emerald-400"
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Recipient</p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs font-mono text-white">{shortenAddress(verificationResult.credential.recipient)}</p>
+                          <button
+                            onClick={() => copyToClipboard(verificationResult.credential.recipient, 'recipient')}
+                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                            title="Copy recipient address"
+                          >
+                            {copiedAddress === 'recipient' ? (
+                              <motion.svg
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="w-3 h-3 text-emerald-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </motion.svg>
+                            ) : (
+                              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Issued Date</p>
+                        <p className="text-sm text-white">{formatDate(verificationResult.credential.issuanceDate)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Status</p>
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          verificationResult.credential.isRevoked
+                            ? "bg-red-500/10 text-red-400 border border-red-500/30"
+                            : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
                         }`}>
                           {verificationResult.credential.isRevoked ? "Revoked" : "Active"}
                         </span>
@@ -715,36 +856,47 @@ export default function VerifierDashboard() {
                   </div>
                 )}
 
-                {/* Actions */}
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => {
-                      setShowResultModal(false);
-                      setCredentialId("");
-                    }}
-                    className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-semibold transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowResultModal(false);
-                      setCredentialId("");
-                    }}
-                    className="group relative inline-flex items-center justify-center flex-1 px-6 py-3 text-sm font-semibold text-black overflow-hidden transition-all duration-300"
-                  >
-                    <div
-                      className="absolute inset-0 bg-emerald-400 transition-all duration-300 group-hover:bg-emerald-500"
-                      style={{
-                        clipPath:
-                          "polygon(8% 0%, 92% 0%, 100% 50%, 92% 100%, 8% 100%, 0% 50%)",
-                      }}
-                    />
-                    <span className="relative font-bold tracking-wide flex items-center gap-2">
-                      Verify Another
-                    </span>
-                  </button>
+                {/* Blockchain Verification Badge */}
+                <div className="flex items-center justify-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg mb-4">
+                  <Shield className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-semibold text-cyan-400">Verified on Monad Blockchain</span>
                 </div>
+
+                {/* Action Buttons - Compact */}
+                <div className="grid grid-cols-2 gap-2">
+                  {verificationResult.credential?.transactionHash && (
+                    <a
+                      href={`https://testnet.monadexplorer.com/tx/${verificationResult.credential.transactionHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-all text-xs font-medium"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View TX
+                    </a>
+                  )}
+                  {verificationResult.credential?.metadataURI && (
+                    <a
+                      href={`https://ipfs.io/ipfs/${verificationResult.credential.metadataURI.replace('ipfs://', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-all text-xs font-medium"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View IPFS
+                    </a>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowResultModal(false);
+                    setCredentialId("");
+                  }}
+                  className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-all text-xs font-medium"
+                >
+                  <ScanLine className="w-3 h-3" />
+                  Verify Another
+                </button>
               </div>
             </motion.div>
           </>

@@ -243,14 +243,27 @@ class BackendWalletService {
       }
 
       // Extract tokenId from logs
-      // The CredentialMinted event signature
-      const credentialMintedTopic = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925'; // Adjust if needed
+      // The CredentialMinted event: event CredentialMinted(uint256 indexed tokenId, address indexed recipient, string credentialType)
+      const { keccak256, toHex } = await import('viem');
+      const credentialMintedTopic = keccak256(toHex('CredentialMinted(uint256,address,string)'));
 
-      // Find the relevant log and decode tokenId
-      // For now, we'll parse it from the first log's topics
-      const tokenId = receipt.logs[0]?.topics[1]
-        ? BigInt(receipt.logs[0].topics[1]).toString()
-        : '0';
+      console.log('[Backend Wallet] Looking for CredentialMinted event in', receipt.logs.length, 'logs');
+
+      // Find the CredentialMinted event log
+      const credentialLog = receipt.logs.find(log => log.topics[0] === credentialMintedTopic);
+
+      let tokenId = '0';
+      if (credentialLog && credentialLog.topics[1]) {
+        // tokenId is the first indexed parameter (topics[1])
+        tokenId = BigInt(credentialLog.topics[1]).toString();
+        console.log('[Backend Wallet] Extracted tokenId from event:', tokenId);
+      } else {
+        console.warn('[Backend Wallet] Could not find CredentialMinted event, defaulting to tokenId 0');
+        console.log('[Backend Wallet] Available logs:', receipt.logs.map(l => ({
+          topics: l.topics,
+          data: l.data,
+        })));
+      }
 
       console.log('[Backend Wallet] Credential minted successfully:', {
         tokenId,
