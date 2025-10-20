@@ -168,9 +168,9 @@ sequenceDiagram
 ![Envio](docs/Images/envio.png)
 *Real-time blockchain event indexing and GraphQL interface*
 
-### Envio Code Integration
-![Envio Code](docs/Images/envio-code.png)
-*Event handlers and indexer configuration*
+### Envio Running Locally
+![Envio Running Locally](docs/Images/envio-running-locally.png)
+*Envio indexer running locally during development (hosted deployment not available)*
 
 ---
 
