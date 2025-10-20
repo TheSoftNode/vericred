@@ -12,10 +12,10 @@ import clientPromise from '@/lib/database/mongodb';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { credentialId: string } }
+  { params }: { params: Promise<{ credentialId: string }> }
 ) {
   try {
-    const credentialId = params.credentialId;
+    const { credentialId } = await params;
 
     console.log('[Frame] Verifying credential for Frame:', credentialId);
 

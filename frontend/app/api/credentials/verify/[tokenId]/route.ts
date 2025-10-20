@@ -3,10 +3,10 @@ import clientPromise from '@/lib/database/mongodb';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tokenId: string } }
+  { params }: { params: Promise<{ tokenId: string }> }
 ) {
   try {
-    const tokenId = params.tokenId;
+    const { tokenId } = await params;
 
     // Query MongoDB for credential
     const client = await clientPromise;

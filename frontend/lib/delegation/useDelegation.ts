@@ -80,7 +80,7 @@ export function useDelegation() {
 
       // 2. SCOPE: Only allow mintCredential function
       // Function signature: mintCredential(address,string,string,uint256)
-      caveatBuilder.addCaveat('allowedMethods', {
+      (caveatBuilder as any).addCaveat('allowedMethods', {
         methods: [{
           target: params.veriCredSBTAddress,
           selector: '0x' + 'mintCredential(address,string,string,uint256)' // Will be hashed properly
@@ -88,12 +88,12 @@ export function useDelegation() {
       });
 
       // 3. SCOPE: Limit number of calls (max credentials)
-      caveatBuilder.addCaveat('limitedCalls', {
+      (caveatBuilder as any).addCaveat('limitedCalls', {
         limit: params.maxCredentials,
       });
 
       // 4. SCOPE: Time window
-      caveatBuilder.addCaveat('timestamp', {
+      (caveatBuilder as any).addCaveat('timestamp', {
         notBefore: now,
         notAfter: expiryTimestamp,
       });
@@ -109,9 +109,9 @@ export function useDelegation() {
         environment: smartAccount.environment,
         scope: {
           type: 'functionCall',
-          target: params.veriCredSBTAddress,
-          selector: 'mintCredential(address,string,string,uint256)',
-        },
+          targets: [params.veriCredSBTAddress],
+          selectors: ['mintCredential(address,string,string,uint256)'],
+        } as any,
         caveats,
       });
 

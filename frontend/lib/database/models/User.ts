@@ -101,14 +101,19 @@ export class UserModel {
     const db = await getDatabase();
     const collection = db.collection<User>(COLLECTION_NAME);
 
+    const updateDoc: any = {
+      $set: {
+        updatedAt: new Date(),
+      },
+    };
+
+    if (settings) {
+      updateDoc.$set.settings = settings;
+    }
+
     const result = await collection.findOneAndUpdate(
       { address: address.toLowerCase() },
-      {
-        $set: {
-          settings,
-          updatedAt: new Date(),
-        },
-      },
+      updateDoc,
       { returnDocument: 'after' }
     );
 

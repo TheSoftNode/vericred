@@ -21,29 +21,41 @@ export async function OPTIONS(request: NextRequest) {
 
 async function postDelegationHandler(req: NextRequest, auth: { address: string }) {
   try {
+    console.log('[API Delegation] POST request received');
     const body = await req.json();
+    console.log('[API Delegation] Request body:', JSON.stringify(body, null, 2));
+
     const { delegation, smartAccountAddress, maxCalls, expiresAt } = body;
 
     // Get issuer address from authenticated request
     const issuerAddress = auth.address;
+    console.log('[API Delegation] Issuer address:', issuerAddress);
 
     // Validate inputs
     if (!delegation || !smartAccountAddress) {
+      console.error('[API Delegation] Missing required fields');
       return NextResponse.json(
         { error: 'Missing required fields: delegation, smartAccountAddress' },
         { status: 400, headers: corsHeaders }
       );
     }
 
+    console.log('[API Delegation] Delegation object:', delegation);
+    console.log('[API Delegation] Smart account:', smartAccountAddress);
+
     if (!delegation.signature) {
+      console.error('[API Delegation] Delegation not signed');
       return NextResponse.json(
         { error: 'Delegation must be signed' },
         { status: 400, headers: corsHeaders }
       );
     }
 
+    console.log('[API Delegation] Delegation signature present:', delegation.signature.substring(0, 20) + '...');
+
     // Get backend wallet address from environment
     const backendAddress = process.env.NEXT_PUBLIC_BACKEND_DELEGATION_ADDRESS;
+    console.log('[API Delegation] Backend address:', backendAddress);
     if (!backendAddress) {
       throw new Error('Backend delegation address not configured');
     }
@@ -52,8 +64,10 @@ async function postDelegationHandler(req: NextRequest, auth: { address: string }
     const veriCredSBTAddress = delegation.caveats?.find((c: any) =>
       c.enforcer && c.terms
     )?.terms || process.env.NEXT_PUBLIC_VERICRED_SBT_ADDRESS || '';
+    console.log('[API Delegation] VeriCredSBT address from caveats:', veriCredSBTAddress);
 
     // Create delegation in database
+    console.log('[API Delegation] Creating delegation in database...');
     const createdDelegation = await DelegationModel.create({
       issuerAddress,
       smartAccountAddress: smartAccountAddress.toLowerCase(),
@@ -69,7 +83,7 @@ async function postDelegationHandler(req: NextRequest, auth: { address: string }
 
     const delegationId = createdDelegation._id?.toString();
 
-    console.log('[Delegation] Stored delegation:', {
+    console.log('[API Delegation] ✅ Stored delegation successfully:', {
       id: delegationId,
       smartAccount: smartAccountAddress,
       issuer: issuerAddress,
@@ -159,9 +173,9 @@ async function getHandler(req: NextRequest) {
   }
 
   // Otherwise require authentication
-  return withAuth(getDelegationsHandler)(req);
+  return withAuth<any>(getDelegationsHandler)(req);
 }
 
 // Export with authentication
-export const POST = withAuth(postDelegationHandler);
+export const POST = withAuth<any>(postDelegationHandler);
 export const GET = getHandler;

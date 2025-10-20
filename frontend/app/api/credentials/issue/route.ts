@@ -139,7 +139,7 @@ async function issueCredentialHandler(req: NextRequest, auth: { address: string 
       issuerAddress,
       issuerName: issuerName || 'Unknown Issuer',
       credentialType,
-      credentialData,
+      additionalData: credentialData,
       issuedDate: new Date().toISOString(),
       credentialHash: '', // Will be computed on-chain
     });
@@ -219,7 +219,7 @@ async function issueCredentialHandler(req: NextRequest, auth: { address: string 
 }
 
 // Export with auth and rate limiting
-export const POST = withAuthAndRateLimit(
+export const POST = withAuthAndRateLimit<any>(
   issueCredentialHandler,
   RATE_LIMITS.CREDENTIAL_ISSUE
 );

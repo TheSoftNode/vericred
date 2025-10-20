@@ -188,10 +188,18 @@ class DelegationService {
       // User signs delegation with their smart account
       // This should trigger MetaMask popup for EIP-712 signing
       console.log('Calling smartAccount.signDelegation...');
+      console.log('⚠️ IMPORTANT: A MetaMask popup should appear now. Check for it!');
 
-      const signature = await this.smartAccount.signDelegation({
+      // Add timeout to prevent infinite hanging
+      const signaturePromise = this.smartAccount.signDelegation({
         delegation,
       });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Signing timeout after 60 seconds. Check if MetaMask popup is blocked or hidden.')), 60000);
+      });
+
+      const signature = await Promise.race([signaturePromise, timeoutPromise]) as Hex;
 
       console.log('✅ Delegation signed successfully!');
       console.log('Signature:', signature);

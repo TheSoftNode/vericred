@@ -27,7 +27,9 @@ interface Credential {
   tokenId: string;
   credentialType: string;
   issuer: string;
+  issuerAddress: string;
   recipient: string;
+  recipientAddress: string;
   issuanceDate: string;
   expirationDate?: string;
   isRevoked: boolean;
@@ -38,6 +40,7 @@ interface Credential {
 interface VerificationRecord {
   id: string;
   credentialId: string;
+  tokenId?: string;
   credential?: Credential;
   verifiedAt: string;
   status: "valid" | "invalid" | "expired" | "revoked";

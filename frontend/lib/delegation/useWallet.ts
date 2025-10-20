@@ -162,9 +162,4 @@ export function useWallet() {
   };
 }
 
-// Type declarations for window.ethereum
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
+// Type declarations for window.ethereum removed - defined elsewhere

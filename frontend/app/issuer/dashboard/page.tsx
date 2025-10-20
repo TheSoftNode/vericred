@@ -320,9 +320,12 @@ export default function IssuerDashboard() {
   const handleCreateDelegation = async () => {
     setIsCreatingDelegation(true);
     try {
+      console.log('[Delegation] Starting delegation setup...');
+
       // Step 1: Ensure wallet is connected via delegation wallet service
       let connection = walletService.getConnection();
       if (!connection) {
+        console.log('[Delegation] Connecting wallet...');
         await walletService.connect();
         connection = walletService.getConnection();
       }
@@ -331,29 +334,44 @@ export default function IssuerDashboard() {
         throw new Error("Failed to connect wallet");
       }
 
+      console.log('[Delegation] Wallet connected:', connection.address);
+
       // Step 2: Create smart account
+      console.log('[Delegation] Creating smart account...');
       const smartAccountInfo = await delegationService.createSmartAccount();
       setSmartAccountAddress(smartAccountInfo.address);
+      console.log('[Delegation] Smart account created:', smartAccountInfo.address);
 
       // Step 3: Create and sign delegation
+      console.log('[Delegation] Creating delegation request...');
       const delegationRequest = await delegationService.createAndSignDelegation({
         backendAddress: BACKEND_ADDRESS,
         veriCredSBTAddress: VERICRED_SBT_ADDRESS,
         maxCredentials,
         expiryDays,
       });
+      console.log('[Delegation] Delegation signed');
 
       // Step 4: Send to backend
+      console.log('[Delegation] Sending to backend...');
       const result = await delegationService.sendDelegationToBackend(
         delegationRequest,
         BACKEND_URL
       );
 
+      console.log('[Delegation] Setup complete!', result);
       setDelegationId(result.delegationId);
       setHasDelegation(true);
       setShowDelegationModal(false);
-    } catch (error) {
-      console.error("Failed to create delegation:", error);
+
+      toast.success("Delegation Created", {
+        description: "Successfully set up delegation for credential issuance",
+      });
+    } catch (error: any) {
+      console.error("[Delegation] Failed to create delegation:", error);
+      toast.error("Delegation Failed", {
+        description: error.message || "Failed to create delegation. Check console for details.",
+      });
     } finally {
       setIsCreatingDelegation(false);
     }

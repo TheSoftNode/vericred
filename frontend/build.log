@@ -1,0 +1,34 @@
+
+> frontend@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.3
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+
+[2m[247.52ms][22m [@tailwindcss/postcss] app/globals.css
+[2m[  0.09ms][22m  [2m ↳ [22mQuick bail check
+[2m[ 62.41ms][22m  [2m ↳ [22mSetup compiler
+[2m[  0.50ms][22m    [2m ↳ [22mPostCSS AST -> Tailwind CSS AST
+[2m[ 61.87ms][22m    [2m ↳ [22mCreate compiler
+[2m[  0.11ms][22m  [2m ↳ [22mRegister full rebuild paths
+[2m[ 11.12ms][22m  [2m ↳ [22mSetup scanner
+[2m[ 21.78ms][22m  [2m ↳ [22mScan for candidates
+[2m[ 15.77ms][22m  [2m ↳ [22mRegister dependency messages
+[2m[ 60.10ms][22m  [2m ↳ [22mBuild utilities
+[2m[ 62.31ms][22m  [2m ↳ [22mOptimization
+[2m[  1.52ms][22m    [2m ↳ [22mAST -> CSS
+[2m[ 41.49ms][22m    [2m ↳ [22mLightning CSS
+[2m[ 19.25ms][22m    [2m ↳ [22mCSS -> PostCSS AST
+[2m[ 13.29ms][22m  [2m ↳ [22mUpdate PostCSS AST
+
+ ✓ Compiled successfully in 27.6s
+   Linting and checking validity of types ...
+Failed to compile.
+
+app/api/frames/verify/[credentialId]/route.ts
+Type error: Route "app/api/frames/verify/[credentialId]/route.ts" has an invalid "GET" export:
+  Type "{ params: { credentialId: string; }; }" is not a valid type for the function's second argument.
+
+Next.js build worker exited with code: 1 and signal: null

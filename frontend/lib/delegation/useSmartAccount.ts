@@ -73,7 +73,7 @@ export function useSmartAccount() {
           [],            // No P256 Y coordinates
         ],
         deploySalt: '0x0000000000000000000000000000000000000000000000000000000000000001',
-        signer: { walletClient },
+        signer: { walletClient: walletClient as any },
       });
 
       console.log('Smart account created:', smartAccount.address);

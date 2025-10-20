@@ -42,7 +42,7 @@ export class RateLimiter {
 
     if (!entry || entry.resetAt < now) {
       // No entry or expired - create new one
-      entry = {
+      const newEntry = {
         key,
         count: 1,
         resetAt,
@@ -50,9 +50,11 @@ export class RateLimiter {
 
       await collection.updateOne(
         { key },
-        { $set: entry },
+        { $set: newEntry },
         { upsert: true }
       );
+
+      entry = newEntry as any;
 
       return {
         allowed: true,

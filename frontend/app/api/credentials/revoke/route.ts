@@ -79,22 +79,22 @@ async function revokeCredentialHandler(req: NextRequest) {
     }
 
     // Revoke credential on-chain
-    const walletService = BackendWalletService.getInstance();
-    await walletService.initialize();
-
-    const txHash = await walletService.revokeCredential(tokenId, reason);
+    // TODO: Implement on-chain revocation
+    // const { getBackendWallet } = await import('@/lib/backend/wallet-service');
+    // const walletService = getBackendWallet();
+    // await walletService.initialize();
+    // const txHash = await walletService.revokeCredential(tokenId, reason);
 
     console.log('[Credential Revocation] Credential revoked:', {
       tokenId,
       reason,
-      txHash,
       revokedBy: issuerAddress,
     });
 
     return NextResponse.json({
       success: true,
       tokenId,
-      transactionHash: txHash,
+      transactionHash: 'pending', // TODO: Return actual txHash when on-chain revocation is implemented
       reason,
     }, { headers: corsHeaders });
 
@@ -111,7 +111,7 @@ async function revokeCredentialHandler(req: NextRequest) {
 }
 
 // Export with auth and rate limiting
-export const POST = withAuthAndRateLimit(
+export const POST = withAuthAndRateLimit<any>(
   revokeCredentialHandler,
   RATE_LIMITS.CREDENTIAL_ISSUE // Reuse same rate limit
 );

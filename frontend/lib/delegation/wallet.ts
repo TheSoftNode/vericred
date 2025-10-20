@@ -85,8 +85,8 @@ class WalletService {
     this.currentAddress = null;
     
     // Remove event listeners
-    if (window.ethereum) {
-      window.ethereum.removeAllListeners();
+    if (window.ethereum && (window.ethereum as any).removeAllListeners) {
+      (window.ethereum as any).removeAllListeners();
     }
 
     console.log('Wallet disconnected');
@@ -141,6 +141,8 @@ class WalletService {
    * Switch to Monad testnet
    */
   private async switchToMonadTestnet(): Promise<void> {
+    if (!window.ethereum) return;
+
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
@@ -179,7 +181,7 @@ class WalletService {
     if (!window.ethereum) return;
 
     // Account changed
-    window.ethereum.on('accountsChanged', (accounts: string[]) => {
+    (window.ethereum as any).on('accountsChanged', (accounts: string[]) => {
       if (accounts.length === 0) {
         // User disconnected wallet
         this.disconnect();
@@ -192,7 +194,7 @@ class WalletService {
     });
 
     // Chain changed
-    window.ethereum.on('chainChanged', (chainId: string) => {
+    (window.ethereum as any).on('chainChanged', (chainId: string) => {
       console.log('Chain changed:', chainId);
       window.location.reload();
     });
@@ -230,9 +232,4 @@ class WalletService {
 // Export singleton instance
 export const walletService = new WalletService();
 
-// Type declarations for window.ethereum
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
+// Type declarations for window.ethereum removed - defined in auth-context.tsx
