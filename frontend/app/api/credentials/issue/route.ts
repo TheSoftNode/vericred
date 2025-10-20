@@ -167,7 +167,33 @@ async function issueCredentialHandler(req: NextRequest, auth: { address: string 
       issuer: issuerAddress,
     });
 
-    // 5. Return success response
+    // 5. Save credential to MongoDB for dashboard display
+    const clientPromise = (await import('@/lib/database/mongodb')).default;
+    const client = await clientPromise;
+    const db = client.db('vericred');
+
+    await db.collection('credentials').insertOne({
+      tokenId: result.tokenId,
+      transactionHash: result.txHash,
+      recipientAddress: recipientAddress.toLowerCase(),
+      recipientName: recipientName || 'Unknown',
+      issuerAddress: issuerAddress.toLowerCase(),
+      issuerName: issuerName || 'Unknown Issuer',
+      credentialType,
+      credentialData,
+      metadataURI,
+      isRevoked: false,
+      createdAt: new Date(),
+      fraudAnalysis: fraudAnalysis ? {
+        riskLevel: fraudAnalysis.riskLevel,
+        riskScore: fraudAnalysis.riskScore,
+        recommendation: fraudAnalysis.recommendation,
+      } : null,
+    });
+
+    console.log('[Credential Issuance] Credential saved to database');
+
+    // 6. Return success response
     return NextResponse.json({
       success: true,
       tokenId: result.tokenId,

@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCredentialById } from '@/lib/server/envio';
+import clientPromise from '@/lib/database/mongodb';
 
 export async function GET(
   request: NextRequest,
@@ -19,8 +19,17 @@ export async function GET(
 
     console.log('[Frame] Verifying credential for Frame:', credentialId);
 
-    // Query Envio for credential
-    const credential = await getCredentialById(credentialId);
+    // Query MongoDB for credential
+    const client = await clientPromise;
+    const db = client.db('vericred');
+    const credentialDoc = await db.collection('credentials').findOne({
+      tokenId: credentialId
+    });
+
+    const credential = credentialDoc ? {
+      credentialType: credentialDoc.credentialType,
+      status: credentialDoc.isRevoked ? 'REVOKED' : 'ACTIVE',
+    } : null;
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 

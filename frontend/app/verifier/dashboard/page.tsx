@@ -103,50 +103,43 @@ export default function VerifierDashboard() {
 
     setIsVerifying(true);
     try {
-      // Step 1: Query Envio for credential data
-      const query = `
-        query GetCredential($tokenId: String!) {
-          Credential(where: { tokenId: { _eq: $tokenId } }) {
-            id
-            tokenId
-            credentialType
-            issuer
-            recipient
-            issuanceDate
-            expirationDate
-            isRevoked
-            metadataURI
-          }
-        }
-      `;
+      // Query MongoDB for credential data
+      const response = await fetch(`${BACKEND_URL}/api/credentials/verify/${credentialId}`);
 
-      const envioResponse = await fetch(ENVIO_GRAPHQL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          variables: { tokenId: credentialId },
-        }),
-      });
-
-      if (!envioResponse.ok) {
-        throw new Error("Failed to query credential");
-      }
-
-      const envioData = await envioResponse.json();
-      const credentials = envioData.data?.Credential || [];
-
-      if (credentials.length === 0) {
+      if (!response.ok) {
         setVerificationResult({
           credential: null as any,
           status: "invalid",
           message: "Credential not found on blockchain",
         });
         setShowResultModal(true);
+        setIsVerifying(false);
         return;
       }
 
-      const credential = credentials[0];
+      const data = await response.json();
+
+      if (!data.credential) {
+        setVerificationResult({
+          credential: null as any,
+          status: "invalid",
+          message: "Credential not found",
+        });
+        setShowResultModal(true);
+        setIsVerifying(false);
+        return;
+      }
+
+      const credential = {
+        id: data.credential.tokenId,
+        tokenId: data.credential.tokenId,
+        credentialType: data.credential.credentialType,
+        issuer: data.credential.issuerAddress,
+        recipient: data.credential.recipientAddress,
+        issuanceDate: new Date(data.credential.createdAt).getTime().toString(),
+        isRevoked: data.credential.isRevoked,
+        metadataURI: data.credential.metadataURI,
+      };
 
       // Step 2: Verify credential validity
       let status: "valid" | "invalid" | "expired" | "revoked" = "valid";

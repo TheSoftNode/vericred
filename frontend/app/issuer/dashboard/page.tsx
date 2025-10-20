@@ -65,12 +65,45 @@ export default function IssuerDashboard() {
   const [smartAccountAddress, setSmartAccountAddress] = useState<Address | null>(null);
   const [hasDelegation, setHasDelegation] = useState(false);
 
+  // Credentials State
+  const [credentials, setCredentials] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalIssued: 0,
+    activeCredentials: 0,
+    revokedCredentials: 0,
+    uniqueRecipients: 0,
+  });
+  const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
+
   // Check for existing delegations on mount
   useEffect(() => {
     if (walletAddress) {
       checkExistingDelegation();
+      fetchCredentials();
     }
   }, [walletAddress]);
+
+  const fetchCredentials = async () => {
+    setIsLoadingCredentials(true);
+    try {
+      // Use regular fetch to avoid signature popup on page load
+      const response = await fetch(`${BACKEND_URL}/api/credentials?issuer=${walletAddress}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCredentials(data.credentials || []);
+        setStats(data.stats || {
+          totalIssued: 0,
+          activeCredentials: 0,
+          revokedCredentials: 0,
+          uniqueRecipients: 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch credentials:', error);
+    } finally {
+      setIsLoadingCredentials(false);
+    }
+  };
 
   const checkExistingDelegation = async () => {
     try {
@@ -80,7 +113,8 @@ export default function IssuerDashboard() {
         return;
       }
 
-      const response = await ApiClient.get(`${BACKEND_URL}/api/delegations`);
+      // Use regular fetch instead of ApiClient to avoid signature popup on page load
+      const response = await fetch(`${BACKEND_URL}/api/delegations?address=${walletAddress}`);
       if (response.ok) {
         const data = await response.json();
         if (data.delegations && data.delegations.length > 0) {
@@ -107,20 +141,20 @@ export default function IssuerDashboard() {
     }
   };
 
-  const stats = [
+  const statsDisplay = [
     {
       label: "Total Issued",
-      value: "0",
+      value: stats.totalIssued.toString(),
       icon: Award,
       color: "emerald",
-      change: "+0%",
+      change: `+${stats.totalIssued}`,
     },
     {
       label: "Active Credentials",
-      value: "0",
+      value: stats.activeCredentials.toString(),
       icon: Shield,
       color: "cyan",
-      change: "+0%",
+      change: `+${stats.activeCredentials}`,
     },
     {
       label: "Pending",
@@ -131,10 +165,10 @@ export default function IssuerDashboard() {
     },
     {
       label: "Recipients",
-      value: "0",
+      value: stats.uniqueRecipients.toString(),
       icon: Users,
       color: "white",
-      change: "+0",
+      change: `+${stats.uniqueRecipients}`,
     },
   ];
 
@@ -144,10 +178,15 @@ export default function IssuerDashboard() {
 
     setIsAnalyzing(true);
     try {
-      const response = await ApiClient.post(`${BACKEND_URL}/api/ai/analyze-fraud`, {
-        recipientAddress,
-        issuerAddress: walletAddress,
-        credentialType: credentialType || "Unknown",
+      // Use regular fetch to avoid signature popup
+      const response = await fetch(`${BACKEND_URL}/api/ai/analyze-fraud`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientAddress,
+          issuerAddress: walletAddress,
+          credentialType: credentialType || "Unknown",
+        }),
       });
 
       if (response.ok) {
@@ -226,6 +265,7 @@ export default function IssuerDashboard() {
     try {
       const credentialData = buildMetadata();
 
+      // Use ApiClient which will handle authentication
       const response = await ApiClient.post(`${BACKEND_URL}/api/credentials/issue`, {
         delegationId: "auto",
         recipientAddress,
@@ -256,6 +296,7 @@ export default function IssuerDashboard() {
         setEndDate("");
         setRiskAnalysis(null);
         setShowIssueModal(false);
+        fetchCredentials(); // Refresh the credentials list
         toast.success("Credential issued successfully!", {
           description: `Token ID: ${result.tokenId}`,
         });
@@ -411,7 +452,7 @@ export default function IssuerDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
+          {statsDisplay.map((stat, index) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
@@ -499,17 +540,92 @@ export default function IssuerDashboard() {
                 </button>
               </div>
 
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                  <FileText className="w-8 h-8 text-slate-500" />
+              {isLoadingCredentials ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full mb-4"
+                  />
+                  <p className="text-slate-400">Loading credentials...</p>
                 </div>
-                <p className="text-slate-400 mb-2">No credentials issued yet</p>
-                <p className="text-sm text-slate-500">
-                  {delegationId
-                    ? "Start by issuing your first credential"
-                    : "Set up delegation first"}
-                </p>
-              </div>
+              ) : credentials.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                    <FileText className="w-8 h-8 text-slate-500" />
+                  </div>
+                  <p className="text-slate-400 mb-2">No credentials issued yet</p>
+                  <p className="text-sm text-slate-500">
+                    {delegationId
+                      ? "Start by issuing your first credential"
+                      : "Set up delegation first"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {credentials.slice(0, 5).map((cred: any) => (
+                    <div
+                      key={cred._id}
+                      className="p-4 bg-white/5 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-all group"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-sm font-semibold text-white">{cred.credentialType.replace(/_/g, ' ')}</h4>
+                            {cred.isRevoked ? (
+                              <span className="px-2 py-0.5 text-xs bg-red-500/10 border border-red-500/30 text-red-400 rounded-full">
+                                Revoked
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400 mb-1">
+                            To: {cred.recipientAddress.slice(0, 6)}...{cred.recipientAddress.slice(-4)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Token ID: {cred.tokenId}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/5">
+                        {cred.transactionHash && (
+                          <a
+                            href={`https://testnet.monadexplorer.com/tx/${cred.transactionHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                          >
+                            <span>View TX</span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        )}
+                        {cred.metadataURI && (
+                          <a
+                            href={`https://ipfs.io/ipfs/${cred.metadataURI.replace('ipfs://', '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                          >
+                            <span>IPFS Metadata</span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        )}
+                        <span className="text-xs text-slate-500 ml-auto">
+                          {new Date(cred.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
 

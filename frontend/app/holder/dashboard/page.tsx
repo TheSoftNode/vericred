@@ -74,43 +74,32 @@ export default function HolderDashboard() {
     },
   ];
 
-  // Fetch credentials from Envio
+  // Fetch credentials from MongoDB
   useEffect(() => {
     if (!walletAddress) return;
 
     const fetchCredentials = async () => {
       setIsLoading(true);
       try {
-        const query = `
-          query GetHolderCredentials($recipient: String!) {
-            Credential(
-              where: { recipient: { _eq: $recipient } }
-              order_by: { issuanceDate: desc }
-            ) {
-              id
-              tokenId
-              credentialType
-              issuer
-              issuanceDate
-              expirationDate
-              isRevoked
-              metadataURI
-            }
-          }
-        `;
-
-        const response = await fetch(ENVIO_GRAPHQL_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query,
-            variables: { recipient: walletAddress.toLowerCase() },
-          }),
-        });
+        // Fetch from MongoDB via our API
+        const response = await fetch(`${BACKEND_URL}/api/credentials?recipient=${walletAddress}`);
 
         if (response.ok) {
           const data = await response.json();
-          setCredentials(data.data?.Credential || []);
+          const formattedCreds = (data.credentials || []).map((c: any) => ({
+            id: c.tokenId,
+            tokenId: c.tokenId,
+            credentialType: c.credentialType,
+            issuer: c.issuerAddress,
+            issuanceDate: Math.floor(new Date(c.createdAt).getTime() / 1000).toString(),
+            expirationDate: undefined,
+            isRevoked: c.isRevoked,
+            metadataURI: c.metadataURI,
+            transactionHash: c.transactionHash,
+            credentialData: c.credentialData,
+            recipientName: c.recipientName,
+          }));
+          setCredentials(formattedCreds);
         }
       } catch (error) {
         console.error("Failed to fetch credentials:", error);
@@ -363,24 +352,49 @@ export default function HolderDashboard() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedCredential(credential);
-                            setShowShareModal(true);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-all text-xs font-medium"
-                        >
-                          <Share2 className="w-3 h-3" />
-                          Share Access
-                        </button>
-                        <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg transition-all text-xs font-medium">
-                          <Eye className="w-3 h-3" />
-                          View Details
-                        </button>
-                        <button className="flex items-center justify-center gap-2 px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg transition-all">
-                          <Download className="w-3 h-3" />
-                        </button>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const frameUrl = `${window.location.origin}/api/frames/verify/${credential.tokenId}`;
+                              const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(`Just received my ${credential.credentialType} credential! 🎓\n\nVerify it here:`)}&embeds[]=${encodeURIComponent(frameUrl)}`;
+                              window.open(farcasterUrl, '_blank');
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-all text-xs font-medium"
+                          >
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                            Share on Farcaster
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedCredential(credential);
+                              setShowShareModal(true);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-all text-xs font-medium"
+                          >
+                            <Share2 className="w-3 h-3" />
+                            Grant Access
+                          </button>
+                          <button
+                            onClick={() => window.open(`https://ipfs.io/ipfs/${credential.metadataURI.replace('ipfs://', '')}`, '_blank')}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg transition-all text-xs font-medium"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View IPFS
+                          </button>
+                          <a
+                            href={`https://testnet.monadexplorer.com/tx/${(credential as any).transactionHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg transition-all"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
                       </div>
                     </motion.div>
                   ))}

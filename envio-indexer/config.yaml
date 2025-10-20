@@ -4,14 +4,11 @@ description: Enterprise-grade blockchain indexer for VeriCred+ credential manage
 field_selection:
   transaction_fields:
     - "hash"
-    - "gasUsed"
-  block_fields:
-    - "baseFeePerGas"
 networks:
 - id: 10143 # Monad Testnet
-  start_block: 0
-  hypersync_config:
-    url: "${MONAD_HYPERSYNC_URL:-https://testnet-rpc.monad.xyz}"
+  start_block: 44233810 # Start 4 blocks before credential mint at block 44233814
+  rpc_config:
+    url: https://testnet-rpc.monad.xyz
   contracts:
   - name: VeriCredSBT
     address:

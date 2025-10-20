@@ -61,12 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: false,
   })
 
-  // Load persisted session on mount
+  // Load persisted session on mount (without triggering wallet signatures)
   useEffect(() => {
     const session = localStorage.getItem('vericred_session')
     if (session) {
       try {
         const data = JSON.parse(session)
+        // Only restore the session data, don't recreate smart account
         setState(prev => ({ ...prev, ...data, isLoading: false }))
       } catch (e) {
         console.error('Failed to load session:', e)

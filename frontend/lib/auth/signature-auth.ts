@@ -38,8 +38,8 @@ export async function verifyAuthSignature(
     const timestampNum = parseInt(timestamp);
     const now = Date.now();
 
-    // Check timestamp (5 minute window)
-    const MAX_AGE = 5 * 60 * 1000; // 5 minutes
+    // Check timestamp (30 minute window - extended for demo)
+    const MAX_AGE = 30 * 60 * 1000; // 30 minutes
     if (now - timestampNum > MAX_AGE) {
       return {
         address: address as Address,

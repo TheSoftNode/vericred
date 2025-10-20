@@ -29,7 +29,7 @@ VeriCredSBT.CredentialMinted.handler(async ({ event, context }) => {
       blockTimestamp: new Date(event.block.timestamp * 1000),
       logIndex: event.logIndex,
       transactionHash: event.transaction.hash,
-      gasUsed: event.transaction.gasUsed,
+      gasUsed: undefined,
       gasPrice: undefined,
       credential_id: `credential_${event.params.tokenId}`,
     };

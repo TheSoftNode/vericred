@@ -173,9 +173,10 @@ class BackendWalletService {
     const expirationTime = Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60);
 
     try {
-      // Call mintCredential on VeriCredSBT contract
-      const { request } = await this.publicClient.simulateContract({
-        address: VERICRED_SBT_ADDRESS,
+      // Encode the function call data
+      const { encodeFunctionData } = await import('viem');
+
+      const data = encodeFunctionData({
         abi: [
           {
             type: 'function',
@@ -197,11 +198,31 @@ class BackendWalletService {
           params.metadataURI,
           BigInt(expirationTime),
         ],
-        account: this.backendAddress!,
       });
 
-      // Execute the transaction
-      const hash = await this.walletClient.writeContract(request);
+      // Get gas price and nonce
+      const [gasPrice, nonce] = await Promise.all([
+        this.publicClient.getGasPrice(),
+        this.publicClient.getTransactionCount({ address: this.backendAddress! }),
+      ]);
+
+      // Prepare transaction request
+      const request = await this.walletClient.prepareTransactionRequest({
+        account: this.walletClient.account!,
+        to: VERICRED_SBT_ADDRESS,
+        data,
+        gas: 1500000n, // Increased gas limit for registry integration
+        gasPrice,
+        nonce,
+        type: 'legacy', // Use legacy transaction for Monad
+        chain: monadTestnet,
+      });
+
+      // Sign and send raw transaction
+      const serializedTransaction = await this.walletClient.signTransaction(request);
+      const hash = await this.publicClient.sendRawTransaction({
+        serializedTransaction,
+      });
 
       console.log('[Backend Wallet] Transaction sent:', hash);
 

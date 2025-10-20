@@ -91,12 +91,20 @@ async function postDelegationHandler(req: NextRequest, auth: { address: string }
   }
 }
 
-async function getDelegationsHandler(req: NextRequest, auth: { address: string }) {
+async function getDelegationsHandler(req: NextRequest, auth?: { address: string }) {
   try {
-    // Get issuer address from authenticated request
-    const issuerAddress = auth.address;
-
     const { searchParams } = new URL(req.url);
+
+    // Get issuer address from auth or query parameter (for unauthenticated reads)
+    const issuerAddress = auth?.address || searchParams.get('address');
+
+    if (!issuerAddress) {
+      return NextResponse.json(
+        { error: 'Issuer address required (via auth or query param)' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
     const smartAccountAddress = searchParams.get('smartAccountAddress');
     const includeRevoked = searchParams.get('includeRevoked') === 'true';
 
@@ -140,6 +148,20 @@ async function getDelegationsHandler(req: NextRequest, auth: { address: string }
   }
 }
 
+// Wrapper for GET that allows both authenticated and unauthenticated access
+async function getHandler(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const addressParam = searchParams.get('address');
+
+  // If address is provided in query, allow unauthenticated access
+  if (addressParam) {
+    return getDelegationsHandler(req, undefined);
+  }
+
+  // Otherwise require authentication
+  return withAuth(getDelegationsHandler)(req);
+}
+
 // Export with authentication
 export const POST = withAuth(postDelegationHandler);
-export const GET = withAuth(getDelegationsHandler);
+export const GET = getHandler;
